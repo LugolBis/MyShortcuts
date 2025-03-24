@@ -4,11 +4,11 @@ SCRIPT_PATH = "$(PWD)/main.sh"
 
 config:
 	@chmod +x main.sh
-	@echo "" > current_command.sh
-	@chmod +x current_command.sh
+	@echo "" > current_command.txt
 
 run:
-	x-terminal-emulator -e $(SCRIPT_PATH) "$(PWD)/current_command.sh"
+	x-terminal-emulator -e $(SCRIPT_PATH) "$(PWD)/current_command.txt"
 
 clear:
-	@echo "" > current_command.sh
+	@echo "" > current_command.txt
+	@rm my_shortcuts.db
