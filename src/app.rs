@@ -1,35 +1,35 @@
 use std::io;
 
+use crate::ui::{MyWidget,State};
+use crate::database::Database;
+
 use ratatui::{
     prelude::{Constraint, Layout, Direction},
-    buffer::Buffer,
-    layout::Rect,
-    style::Stylize,
-    symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
     DefaultTerminal, Frame,
     crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind}
 };
 
-pub fn main() -> io::Result<()> {
+pub fn main_app() -> io::Result<()> {
     let mut terminal = ratatui::init();
-    let app_result = App::default().run(&mut terminal);
+    let app_result = App::new().run(&mut terminal);
     ratatui::restore();
     app_result
 }
 
-#[derive(Debug, Default)]
 pub struct App {
-    counter: u8,
+    widgets: Vec<MyWidget>,
     exit: bool,
 }
 
 impl App {
 
-    /// runs the application's main loop until the user quits
+    pub fn new() -> Self {
+        App { widgets: vec![MyWidget::new(0,true),MyWidget::new(1,false)], exit: false }
+    }
+
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
+            self.update_widgets_args();
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
@@ -42,15 +42,12 @@ impl App {
             [Constraint::Percentage(30), Constraint::Percentage(100)],
         )
         .split(frame.area());
-        frame.render_widget(self, layout[0]);
-        frame.render_widget(self, layout[1]);
-        //frame.render_widget(self, frame.area());
+        frame.render_widget(&self.widgets[0], layout[0]);
+        frame.render_widget(&self.widgets[1], layout[1]);
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
         match event::read()? {
-            // it's important to check that the event is a key press event as
-            // crossterm also emits key release and repeat events on Windows.
             Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
                 self.handle_key_event(key_event)
             }
@@ -61,50 +58,33 @@ impl App {
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
-            KeyCode::Char('q') => self.exit(),
-            KeyCode::Left => self.decrement_counter(),
-            KeyCode::Right => self.increment_counter(),
-            _ => {}
+            KeyCode::Char('q') | KeyCode::Esc => self.exit(),
+            key_code => {
+                for widget in &mut self.widgets {
+                    widget.update_state(key_code);
+                }
+            }
+        }
+    }
+
+    fn update_widgets_args(&mut self) {
+        if let Ok(names) = Database::query_read("select type,name from connections order by type;") {
+            self.widgets[0].set_args(names.split("\n").map(|name| name.replace(";", " | ")).collect());
+        }
+        match self.widgets[0].get_state() {
+            State::Selected(index) | State::WasSelected(index) => {
+                if let Some(name) = self.widgets[0].get_args().get(index) {
+                    if let Some(name) = name.split(" | ").collect::<Vec<&str>>().get(1) {
+                        if let Ok(configurations) = Database::query_read(&format!("select configuration from connections where name={};",name)) {
+                            self.widgets[1].set_args(configurations.split(";").map(|arg| String::from(arg)).collect());
+                        }
+                    }
+                }
+            },
         }
     }
 
     fn exit(&mut self) {
         self.exit = true;
-    }
-
-    fn increment_counter(&mut self) {
-        self.counter += 1;
-    }
-
-    fn decrement_counter(&mut self) {
-        self.counter -= 1;
-    }
-}
-
-impl Widget for &App {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title = Line::from(" Counter App Tutorial ".bold());
-        let instructions = Line::from(vec![
-            " Decrement ".into(),
-            "<Left>".blue().bold(),
-            " Increment ".into(),
-            "<Right>".blue().bold(),
-            " Quit ".into(),
-            "<Q> ".blue().bold(),
-        ]);
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::ROUNDED);
-
-        let counter_text = Text::from(vec![Line::from(vec![
-            "\nValue: ".into(),
-            self.counter.to_string().yellow(),
-        ])]);
-
-        Paragraph::new(counter_text)
-            .centered()
-            .block(block)
-            .render(area, buf);
     }
 }

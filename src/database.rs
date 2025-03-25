@@ -1,14 +1,17 @@
-use std::process::Command;
-use std::env;
-
 use sqlite::Value;
 
 const DB_NAME: &str = "my_shortcuts.db";
-const GET_TABLES: &str = "select name from sqlite_master where type='table';";
 
 pub struct Database;
 
 impl Database {
+    pub fn init() -> Result<(), String> {
+        let query = "
+        DROP TABLE IF EXISTS connections;
+        CREATE TABLE connections (name TEXT primary key, configuration TEXT, type TEXT);";
+        Database::query_write(query)
+    }
+
     pub fn query_write(query:&str) -> Result<(), String> {
         let connection = sqlite::open(DB_NAME)
             .map_err(|e| format!("{e}"))?;
