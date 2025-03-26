@@ -28,7 +28,7 @@ impl Database {
         while let Some(tuple) = cursor.try_next().map_err(|e| format!("{e}"))? {
             let mut line = String::new();
             for value in tuple {
-                line.push_str(&format!("{:?};",extract_value(value).map_err(|e| format!("{e}"))?));
+                line.push_str(&format!("{};",extract_value(value).map_err(|e| format!("{e}"))?));
             }
             result.push_str(&format!("{}\n",line));
         }
@@ -44,4 +44,20 @@ fn extract_value(value:Value) -> Result<String,String> {
         Value::String(text) => Ok(text),
         Value::Null => Ok(String::from("null"))
     }
+}
+
+#[test]
+fn test_query_read() {
+    match Database::query_read("select * from connections;") {
+        Ok(res) => println!("{}",res),
+        Err(res) => println!("{}",res)
+    }
+}
+
+#[test]
+fn test_extract_value() {
+    assert_eq!(extract_value(Value::Float(55.1)),Ok(String::from("55.1")));
+    assert_eq!(extract_value(Value::Integer(55)),Ok(String::from("55")));
+    assert_eq!(extract_value(Value::String(String::from("tutu"))),Ok(String::from("tutu")));
+    assert_eq!(extract_value(Value::Null),Ok(String::from("null")));
 }

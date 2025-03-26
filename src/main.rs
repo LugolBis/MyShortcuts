@@ -6,6 +6,7 @@ mod app;
 use database::Database;
 use app::main_app;
 use std::fs;
+use std::process::Command;
 
 fn main() {
     if !fs::exists("my_shortcuts.db").unwrap_or(false) {
@@ -31,15 +32,9 @@ fn main() {
 #[test]
 fn test_bash() {
     use utils::*;
-    let mut lulu: Vec<Result<String,String>> = Vec::new();
-    lulu.push(run_bash());
-    println!("coucou");
-    println!("{:?}",lulu[0]);
-    /* 
-    match run_bash() {
-        Ok(res) => println!("Successfuly exit : {res}"),
-        Err(res) => println!("ERROR when exit : {res}")
-    }*/
+    println!("Start");
+    run_bash();
+    println!("END");
 }
 
 #[test]

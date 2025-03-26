@@ -41,6 +41,12 @@ impl MyWidget {
         &self.args
     }
 
+    pub fn get_current_arg(&self) -> &String {
+        match self.state {
+            State::Selected(index) | State::WasSelected(index) => &self.args[index]
+        }
+    }
+
     pub fn set_args(&mut self, args:Vec<String>) {
         self.args = args
     }
@@ -66,15 +72,15 @@ impl Widget for &MyWidget {
             0 => {
                 title = Line::from(" Connections ".bold());
                 instructions = Line::from(vec![
-                    " Select : ".into()," <Up> / ".cyan().bold(),"<Down>".cyan().bold(),
-                    " | Open : ".into()," <o/O> ".cyan().bold()," | Quit : ".into(),"<q/Q> ".cyan().bold(),
+                    " Select : ".into(),"<Up> <Down>".cyan().bold(),
+                    " | Open : ".into(),"<o>".cyan().bold()," | Quit : ".into(),"<q> ".cyan().bold(),
                 ]);
             },
             1 => {
                 title = Line::from(" Informations ".bold());
                 instructions = Line::from(vec![
-                    " Save : ".into(),"<s/S>".cyan().bold(),
-                    " | Edit : ".into(),"<e/E>".cyan().bold()
+                    " Save : ".into(),"<s>".cyan().bold(),
+                    " | Edit : ".into(),"<e> ".cyan().bold()
                 ]);
             },
             _ => {
@@ -87,7 +93,7 @@ impl Widget for &MyWidget {
             .title_bottom(instructions.centered())
             .border_set(border::ROUNDED);
         
-        let mut lines: Vec<Line> = self.args.iter().map(|a| Line::from(String::clone(a).replace("\"",""))).collect();
+        let mut lines: Vec<Line> = self.args.iter().map(|a| Line::from(String::clone(a))).collect();
         if lines.len() > 0 {
             match self.state {
                 State::Selected(index) => lines[index] = Line::clone(&lines[index]).patch_style(Color::LightCyan),
@@ -126,7 +132,7 @@ fn handle_event0(widget: &mut MyWidget, key_pressed:KeyCode) {
 fn handle_event1(widget: &mut MyWidget, key_pressed:KeyCode) {
     match (key_pressed, widget.state) {
         (KeyCode::Right, State::WasSelected(index)) => widget.state = State::Selected(index),
-        (KeyCode::Left, State::Selected(index)) => widget.state = State::WasSelected(index),
+        (KeyCode::Left, State::Selected(_)) => widget.state = State::WasSelected(0usize),
         (KeyCode::Up, State::Selected(index)) => {
             if widget.args.len()>0 {
                 if let Some(result) = index.checked_sub(1usize) {

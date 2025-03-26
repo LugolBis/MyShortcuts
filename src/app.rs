@@ -1,7 +1,12 @@
 use std::io;
+use std::fs::OpenOptions;
+use std::io::Write;
+
 
 use crate::ui::{MyWidget,State};
 use crate::database::Database;
+use crate::utils::run_bash;
+use crate::{neo4j, result_string, result_vec};
 
 use ratatui::{
     prelude::{Constraint, Layout, Direction},
@@ -39,7 +44,7 @@ impl App {
     fn draw(&self, frame: &mut Frame) {
         let layout = Layout::new(
             Direction::Horizontal,
-            [Constraint::Percentage(30), Constraint::Percentage(100)],
+            [Constraint::Percentage(40), Constraint::Percentage(100)],
         )
         .split(frame.area());
         frame.render_widget(&self.widgets[0], layout[0]);
@@ -59,6 +64,20 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match key_event.code {
             KeyCode::Char('q') | KeyCode::Esc => self.exit(),
+            KeyCode::Char('o') => {
+                let connection = self.widgets[0].get_current_arg().split(" ").collect::<Vec<&str>>();
+                let config = self.widgets[1].get_args();
+                match connection[0] {
+                    "Neo4j" => {
+                        if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open("current_command.txt") {
+                            if let Ok(_) = file.write_all(neo4j!(config).as_bytes()) {
+                                let _ = run_bash();
+                            }
+                        }
+                    },
+                    _ => {}
+                }
+            },
             key_code => {
                 for widget in &mut self.widgets {
                     widget.update_state(key_code);
@@ -69,14 +88,14 @@ impl App {
 
     fn update_widgets_args(&mut self) {
         if let Ok(names) = Database::query_read("select type,name from connections order by type;") {
-            self.widgets[0].set_args(names.split("\n").map(|name| name.replace(";", " | ")).collect());
+            self.widgets[0].set_args(result_vec!(names,"\n",true));
         }
         match self.widgets[0].get_state() {
             State::Selected(index) | State::WasSelected(index) => {
                 if let Some(name) = self.widgets[0].get_args().get(index) {
-                    if let Some(name) = name.split(" | ").collect::<Vec<&str>>().get(1) {
-                        if let Ok(configurations) = Database::query_read(&format!("select configuration from connections where name={};",name)) {
-                            self.widgets[1].set_args(configurations.split(";").map(|arg| String::from(arg)).collect());
+                    if let Some(name) = name.split(" ").collect::<Vec<&str>>().get(1) {
+                        if let Ok(configurations) = Database::query_read(&format!("select configuration from connections where name='{}';",name)) {
+                            self.widgets[1].set_args(result_vec!(configurations,";",false));
                         }
                     }
                 }
