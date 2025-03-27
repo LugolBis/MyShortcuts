@@ -18,6 +18,16 @@ pub fn run_bash() {
 
 #[macro_use]
 pub mod macros {
+    /// This macro take in argument a vector of String and format them into<br>
+    /// a String that contains the configuration in a specific format to be store<br>
+    /// in the database
+    #[macro_export]
+    macro_rules! format_config {
+        ($vector: expr) => {
+            $vector.into_iter().map(|e| format!("{};",e)).collect::<String>()
+        };
+    }
+
     #[macro_export]
     macro_rules! result_string {
         ($text: expr) => {
@@ -42,7 +52,7 @@ pub mod macros {
         ($vector: expr) => {
             if $vector.len() == 4 { format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}'",$vector[0],$vector[1],$vector[2],$vector[3]) }
             else if $vector.len() == 5 { format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}' -d {}",$vector[0],$vector[1],$vector[2],$vector[3],$vector[4]) }
-            else {String::from("")}
+            else { format!("echo 'Inconsistent connection configuration {:?}'",$vector) }
         };
     }
 }
@@ -50,6 +60,9 @@ pub mod macros {
 #[test]
 fn test_macro() {
     use super::*;
+
+    assert_eq!(format_config!(vec![String::from("juju"),String::from("lulu")]),String::from("juju;lulu;"));
+
     assert_eq!(result_string!("tutu;lulu;"), String::from("tutu lulu"));
 
     assert_eq!(result_vec!("tutu;lulu;",";",false), vec![String::from("tutu"),String::from("lulu")]);

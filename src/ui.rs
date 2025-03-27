@@ -8,29 +8,31 @@ use ratatui::{
     crossterm::event::KeyCode
 };
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum State {
     Selected(usize),
-    WasSelected(usize)
+    WasSelected(usize),
+    Editing(usize, usize)
 }
 
 #[derive(Debug)]
 pub struct MyWidget {
     id: u64,
     args: Vec<String>,
-    state: State
+    args_name: Vec<String>,
+    state: State,
 }
 
 impl MyWidget {
     pub fn new(id:u64, selected:bool) -> Self {
         match selected {
-            true => MyWidget { id, args: vec![], state: State::Selected(0) },
-            false => MyWidget { id, args: vec![], state: State::WasSelected(0) }
+            true => MyWidget { id, args: vec![], args_name: vec![], state: State::Selected(0) },
+            false => MyWidget { id, args: vec![], args_name: vec![], state: State::WasSelected(0) }
         }
     }
 
-    pub fn from(id:u64,args:Vec<String>, state:State) -> Self {
-        MyWidget { id, args, state }
+    pub fn from(id:u64, args:Vec<String>, args_name:Vec<String>, state:State) -> Self {
+        MyWidget { id, args, args_name, state }
     }
 
     pub fn get_state(&self) -> State {
@@ -41,10 +43,12 @@ impl MyWidget {
         &self.args
     }
 
-    pub fn get_current_arg(&self) -> &String {
-        match self.state {
-            State::Selected(index) | State::WasSelected(index) => &self.args[index]
-        }
+    pub fn get_mut_args(&mut self) -> &mut Vec<String> {
+        &mut self.args
+    }
+
+    pub fn get_arg(&self, index:usize) -> Option<&String> {
+        self.args.get(index)
     }
 
     pub fn set_args(&mut self, args:Vec<String>) {
@@ -53,14 +57,6 @@ impl MyWidget {
 
     pub fn set_state(&mut self, state:State) {
         self.state = state
-    }
-
-    pub fn update_state(&mut self, key_pressed:KeyCode) {
-        match self.id {
-            0 => handle_event0(self, key_pressed),
-            1 => handle_event1(self, key_pressed),
-            _ => {}
-        }
     }
 }
 
@@ -73,14 +69,14 @@ impl Widget for &MyWidget {
                 title = Line::from(" Connections ".bold());
                 instructions = Line::from(vec![
                     " Select : ".into(),"<Up> <Down>".cyan().bold(),
-                    " | Open : ".into(),"<o>".cyan().bold()," | Quit : ".into(),"<q> ".cyan().bold(),
+                    " | Open : ".into(),"<o>".cyan().bold()," | Add : ".into(),"<a>".cyan().bold(),
+                    " | Remove : ".into(),"<r> ".cyan().bold()
                 ]);
             },
             1 => {
                 title = Line::from(" Informations ".bold());
                 instructions = Line::from(vec![
-                    " Save : ".into(),"<s>".cyan().bold(),
-                    " | Edit : ".into(),"<e> ".cyan().bold()
+                    " Edit : ".into(),"<e>".cyan().bold()," | Save : ".into(),"<Enter>".cyan().bold()," | Quit : ".into(),"<q> ".cyan().bold(),
                 ]);
             },
             _ => {
@@ -98,6 +94,7 @@ impl Widget for &MyWidget {
             match self.state {
                 State::Selected(index) => lines[index] = Line::clone(&lines[index]).patch_style(Color::LightCyan),
                 State::WasSelected(index) => lines[index] = Line::clone(&lines[index]).patch_style(Color::Cyan),
+                State::Editing(_, _) => todo!()
             }
         }
         let content = Text::from(lines);
@@ -106,45 +103,5 @@ impl Widget for &MyWidget {
             .centered()
             .block(block)
             .render(area, buf);
-    }
-}
-
-fn handle_event0(widget: &mut MyWidget, key_pressed:KeyCode) {
-    match (key_pressed, widget.state) {
-        (KeyCode::Right, State::Selected(index)) => widget.state = State::WasSelected(index),
-        (KeyCode::Left, State::WasSelected(index)) => widget.state = State::Selected(index),
-        (KeyCode::Up, State::Selected(index)) => {
-            if widget.args.len()>0 {
-                if let Some(result) = index.checked_sub(1usize) {
-                    widget.state = State::Selected(result)
-                } 
-            }
-        },
-        (KeyCode::Down, State::Selected(index)) => {
-            if widget.args.len()>0 && index+1<widget.args.len() {
-                widget.state = State::Selected(index+1)
-            }
-        },
-        (_,_) => {}
-    }
-}
-
-fn handle_event1(widget: &mut MyWidget, key_pressed:KeyCode) {
-    match (key_pressed, widget.state) {
-        (KeyCode::Right, State::WasSelected(index)) => widget.state = State::Selected(index),
-        (KeyCode::Left, State::Selected(_)) => widget.state = State::WasSelected(0usize),
-        (KeyCode::Up, State::Selected(index)) => {
-            if widget.args.len()>0 {
-                if let Some(result) = index.checked_sub(1usize) {
-                    widget.state = State::Selected(result)
-                } 
-            }
-        },
-        (KeyCode::Down, State::Selected(index)) => {
-            if widget.args.len()>0 && index+1<widget.args.len() {
-                widget.state = State::Selected(index+1)
-            }
-        },
-        (_,_) => {}
     }
 }
