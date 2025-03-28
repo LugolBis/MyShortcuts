@@ -1,11 +1,5 @@
 use ratatui::{
-    buffer::Buffer,
-    layout::Rect,
-    style::{Color, Stylize},
-    symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Paragraph, Widget},
-    crossterm::event::KeyCode
+    buffer::Buffer, crossterm::event::KeyCode, layout::Rect, style::{Color, Stylize}, symbols::border, text::{Line, Span, Text}, widgets::{Block, Paragraph, Widget}
 };
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
@@ -51,8 +45,16 @@ impl MyWidget {
         self.args.get(index)
     }
 
+    pub fn get_mut_arg(&mut self, index:usize) -> Option<&mut String> {
+        self.args.get_mut(index)
+    }
+
     pub fn set_args(&mut self, args:Vec<String>) {
         self.args = args
+    }
+
+    pub fn set_args_name(&mut self, args_name:Vec<String>) {
+        self.args_name = args_name
     }
 
     pub fn set_state(&mut self, state:State) {
@@ -64,6 +66,7 @@ impl Widget for &MyWidget {
     fn render(self, area: Rect, buf: &mut Buffer) {
         let title:Line;
         let instructions:Line;
+        let mut lines: Vec<Line>;
         match self.id {
             0 => {
                 title = Line::from(" Connections ".bold());
@@ -72,16 +75,39 @@ impl Widget for &MyWidget {
                     " | Open : ".into(),"<o>".cyan().bold()," | Add : ".into(),"<a>".cyan().bold(),
                     " | Remove : ".into(),"<r> ".cyan().bold()
                 ]);
+                lines = self.args.iter().map(|a| Line::from(String::clone(a))).collect();
             },
             1 => {
                 title = Line::from(" Informations ".bold());
                 instructions = Line::from(vec![
                     " Edit : ".into(),"<e>".cyan().bold()," | Save : ".into(),"<Enter>".cyan().bold()," | Quit : ".into(),"<q> ".cyan().bold(),
                 ]);
+                match self.state {
+                    State::Selected(_) | State::WasSelected(_) => lines = self.args.iter().map(|a| Line::from(String::clone(a))).collect(),
+                    State::Editing(index_name, index_char) => {
+                        lines = self.args_name.iter().map(|arg| Line::from(String::clone(arg))).collect();
+                        for index in 0..lines.len() {
+                            if let Some(arg) = self.args.get(index) {
+                                if index == index_name {
+                                    let mut cursor = String::clone(arg);
+                                    cursor.insert_str(index_char+1, "|");
+                                    lines.insert((index*2)+1, Line::from(cursor))
+                                }
+                                else {
+                                    lines.insert((index*2)+1, Line::from(String::clone(arg))); 
+                                }
+                            }
+                            else {
+                                lines.insert((index*2)+1, Line::from(String::from("...")));
+                            }
+                        }
+                    }
+                }
             },
             _ => {
                 title = Line::from(" Default ".bold());
                 instructions = Line::from(vec![" Default ".into()," Quit ".into(),"<Q> ".cyan().bold()]);
+                lines = self.args.iter().map(|a| Line::from(String::clone(a))).collect();
             },
         }
         let block = Block::bordered()
@@ -89,12 +115,13 @@ impl Widget for &MyWidget {
             .title_bottom(instructions.centered())
             .border_set(border::ROUNDED);
         
-        let mut lines: Vec<Line> = self.args.iter().map(|a| Line::from(String::clone(a))).collect();
         if lines.len() > 0 {
             match self.state {
                 State::Selected(index) => lines[index] = Line::clone(&lines[index]).patch_style(Color::LightCyan),
                 State::WasSelected(index) => lines[index] = Line::clone(&lines[index]).patch_style(Color::Cyan),
-                State::Editing(_, _) => todo!()
+                State::Editing(index_name, index_char) => {
+                    lines[index_name+1] = Line::clone(&lines[index_name+1]).patch_style(Color::LightYellow);
+                }
             }
         }
         let content = Text::from(lines);

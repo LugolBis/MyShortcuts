@@ -23,18 +23,21 @@ pub fn main_app() -> io::Result<()> {
 
 pub struct App {
     widgets: Vec<MyWidget>,
+    save: String,
     exit: bool,
 }
 
 impl App {
 
     pub fn new() -> Self {
-        App { widgets: vec![MyWidget::new(0,true),MyWidget::new(1,false)], exit: false }
+        App { widgets: vec![MyWidget::new(0,true),MyWidget::new(1,false)], save: String::new(), exit: false }
     }
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
-            self.update_widgets_args();
+            if self.save == "" {
+                self.update_widgets_args();
+            }
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
@@ -62,7 +65,7 @@ impl App {
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match (self.widgets[0].get_state(),self.widgets[1].get_state(),key_event.code) {
+        match (self.widgets[0].get_state(), self.widgets[1].get_state(),key_event.code) {
             (State::Selected(index),State::WasSelected(_),KeyCode::Up) => {
                 if self.widgets[0].get_args().len()>0 { self.widgets[0].set_state(State::Selected(index.saturating_sub(1usize))); }
             },
@@ -117,6 +120,47 @@ impl App {
                     let _ = Database::query_write(&format!("update connections set configuration='{}' where name='{}';",new_config,name));
                 }
             },
+            (State::WasSelected(_),State::Selected(index),KeyCode::Char('e')) => {
+                self.save = String::clone(self.widgets[1].get_arg(index).unwrap());
+                self.widgets[1].set_state(State::Editing(index, 0usize));
+            },
+            (State::WasSelected(_),State::Editing(index_name, index_edit),KeyCode::Char(new_char)) => {
+                if let Some(name) = self.widgets[1].get_mut_arg(index_name) {
+                    name.insert(index_edit+1,new_char);
+                    self.widgets[1].set_state(State::Editing(index_name, index_edit+1));
+                }
+            },
+            (State::WasSelected(_),State::Editing(index_name,index_edit),KeyCode::Left) => {
+                self.widgets[1].set_state(State::Editing(index_name, index_edit.saturating_sub(1usize)));
+            },
+            (State::WasSelected(_),State::Editing(index_name,index_edit),KeyCode::Right) => {
+                if index_edit < self.widgets[1].get_arg(index_name).unwrap().len()-1 {
+                    self.widgets[1].set_state(State::Editing(index_name, index_edit+1usize));
+                }
+            },
+            (State::WasSelected(_),State::Editing(index_name,index_edit),KeyCode::Backspace) => {
+                if let Some(name) = self.widgets[1].get_mut_arg(index_name) {
+                    if index_edit<name.len() && name.len()>1 {
+                        name.remove(index_edit);
+                        self.widgets[1].set_state(State::Editing(index_name, index_edit.saturating_sub(1usize)));
+                    }
+                } 
+            },
+            (State::WasSelected(index_name),State::Editing(index,_),KeyCode::Enter) => {
+                if let Some(name) = result_vec!(self.widgets[0].get_arg(index_name).unwrap()," ",false).get(1) {
+                    match Database::query_write(&format!("update connections set configuration='{}' where name='{}'",name,format_config!(self.widgets[1].get_args()))) {
+                        Ok(_) => {
+                            self.widgets[1].set_state(State::Selected(index));
+                            self.save = String::new();
+                        },
+                        Err(error) => {
+                            if let Ok(mut file) = OpenOptions::new().create(true).write(true).append(true).open("logs.txt") {
+                                let _ = file.write_all(format!("ERROR when try to Update the name '{}' to '{}' :\n  {}\n",self.save,name,error).as_bytes());
+                            }
+                        }
+                    }
+                }
+            }
             (State::Selected(_),State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
             (State::WasSelected(_),State::Selected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
             (_,_,_) => {}
@@ -133,6 +177,7 @@ impl App {
                     if let Some(name) = result_vec!(name," ",false).get(1) {
                         if let Ok(configurations) = Database::query_read(&format!("select configuration from connections where name='{}';",name)) {
                             self.widgets[1].set_args(result_vec!(configurations,";",false));
+                            self.widgets[1].set_args_name(result_vec!("Host :;Port :;Username :;Password :; Database:;",";",false));
                         }
                     }
                 }
