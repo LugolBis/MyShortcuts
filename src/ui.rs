@@ -1,134 +1,212 @@
 use ratatui::{
-    buffer::Buffer, crossterm::event::KeyCode, layout::Rect, style::{Color, Stylize}, symbols::border, text::{Line, Span, Text}, widgets::{Block, Paragraph, Widget}
+    prelude::Constraint, buffer::Buffer, crossterm::event::KeyCode, layout::Rect, style::{Color, Stylize, Style,Modifier},Frame,
+    symbols::border, text::{Line, Span, Text}, widgets::{Block, Paragraph, Widget, Cell, Row, Table, TableState,HighlightSpacing}
 };
+use unicode_width::UnicodeWidthStr;
+use crate::objects::*;
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum State {
-    Selected(usize),
-    WasSelected(usize),
-    Editing(usize, usize)
+const ROW_PEER: Color = Color::DarkGray;
+const ROW_ODD: Color = Color::Black;
+const ROW_SELECTED: Color = Color::Blue;
+const ROW_FONT: Color = Color::Cyan;
+const COLUMN_SELECTED: Color = Color::Blue;
+const CELL_SELECTED: Color = Color::LightBlue;
+const HEADER: Color = Color::LightRed;
+
+#[derive(Debug)]
+pub struct WidgetConnections {
+    values: Vec<Connection>,
+    state: State
 }
 
 #[derive(Debug)]
-pub struct MyWidget {
-    id: u64,
-    args: Vec<String>,
-    args_name: Vec<String>,
-    state: State,
+pub struct WidgetConfigurations {
+    values: Vec<Configuration>,
+    state: State
 }
 
-impl MyWidget {
-    pub fn new(id:u64, selected:bool) -> Self {
-        match selected {
-            true => MyWidget { id, args: vec![], args_name: vec![], state: State::Selected(0) },
-            false => MyWidget { id, args: vec![], args_name: vec![], state: State::WasSelected(0) }
-        }
+impl WidgetConnections {
+    pub fn from(values:Vec<Connection>,state:State) -> Self {
+        WidgetConnections { values, state }
     }
 
-    pub fn from(id:u64, args:Vec<String>, args_name:Vec<String>, state:State) -> Self {
-        MyWidget { id, args, args_name, state }
+    pub fn get_values(&self) -> &Vec<Connection> {
+        &self.values
+    }
+
+    pub fn get_mut_values(&mut self) -> &mut Vec<Connection> {
+        &mut self.values
     }
 
     pub fn get_state(&self) -> State {
-        self.state
-    }
-
-    pub fn get_args(&self) -> &Vec<String> {
-        &self.args
-    }
-
-    pub fn get_mut_args(&mut self) -> &mut Vec<String> {
-        &mut self.args
-    }
-
-    pub fn get_arg(&self, index:usize) -> Option<&String> {
-        self.args.get(index)
-    }
-
-    pub fn get_mut_arg(&mut self, index:usize) -> Option<&mut String> {
-        self.args.get_mut(index)
-    }
-
-    pub fn set_args(&mut self, args:Vec<String>) {
-        self.args = args
-    }
-
-    pub fn set_args_name(&mut self, args_name:Vec<String>) {
-        self.args_name = args_name
+        State::clone(&self.state)
     }
 
     pub fn set_state(&mut self, state:State) {
         self.state = state
     }
+
+    pub fn set_values(&mut self,values:Vec<Connection>) {
+        if values.len()>0 { self.values = values }
+        else { self.values = vec![Connection::default()] }
+    }
+
+    fn constraint_len_calculator(&self) -> (u16, u16) {
+        let name_len = self.values.iter().map(|cnx| cnx.get_name().width()).max().unwrap_or(0);
+        let kind_len = self.values.iter().map(|cnx| cnx.get_kind().width()).max().unwrap_or(0);
+        #[allow(clippy::cast_possible_truncation)]
+        (name_len.max(5) as u16, kind_len.max(5) as u16)
+    }
+
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let header_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .fg(HEADER);
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(ROW_SELECTED);
+        let selected_col_style = Style::default().fg(COLUMN_SELECTED);
+
+        let selected_cell_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .fg(CELL_SELECTED);
+        let header = ["Kind", "Name"]
+            .into_iter()
+            .map(Cell::from)
+            .collect::<Row>()
+            .style(header_style)
+            .height(1);
+        let rows = self.values.iter().enumerate().map(|(i, connection)| {
+            let color = match i % 2 {
+                0 => ROW_PEER,
+                _ => ROW_ODD,
+            };
+            let item = [connection.get_kind(), connection.get_name()];
+            item.into_iter()
+                .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
+                .collect::<Row>()
+                .style(Style::new().fg(ROW_FONT).bg(color))
+                .height(4)
+        });
+        let bar = " █ ";
+        let len_constraints = self.constraint_len_calculator();
+        let block = Block::bordered().border_set(border::ROUNDED);
+        let t = Table::new(
+            rows,
+            [
+                Constraint::Length(len_constraints.0 + 1),
+                Constraint::Min(len_constraints.1 + 1),
+                Constraint::Min(len_constraints.1),
+            ],)
+            .header(header)
+            .row_highlight_style(selected_row_style)
+            .column_highlight_style(selected_col_style)
+            .cell_highlight_style(selected_cell_style)
+            .highlight_symbol(Text::from(vec![
+                "".into(),
+                bar.into(),
+                bar.into(),
+                "".into(),
+            ]))
+            .bg(Color::Black)
+            .highlight_spacing(HighlightSpacing::Always)
+            .block(block);
+        match self.get_state() {
+            State::Selected(mut ts) | State::WasSelected(mut ts) => frame.render_stateful_widget(t, area, &mut ts),
+            State::Editing(mut ts, _) => frame.render_stateful_widget(t, area, &mut ts)
+        }
+    }
 }
 
-impl Widget for &MyWidget {
-    fn render(self, area: Rect, buf: &mut Buffer) {
-        let title:Line;
-        let instructions:Line;
-        let mut lines: Vec<Line>;
-        match self.id {
-            0 => {
-                title = Line::from(" Connections ".bold());
-                instructions = Line::from(vec![
-                    " Select : ".into(),"<Up> <Down>".cyan().bold(),
-                    " | Open : ".into(),"<o>".cyan().bold()," | Add : ".into(),"<a>".cyan().bold(),
-                    " | Remove : ".into(),"<r> ".cyan().bold()
-                ]);
-                lines = self.args.iter().map(|a| Line::from(String::clone(a))).collect();
-            },
-            1 => {
-                title = Line::from(" Informations ".bold());
-                instructions = Line::from(vec![
-                    " Edit : ".into(),"<e>".cyan().bold()," | Save : ".into(),"<Enter>".cyan().bold()," | Quit : ".into(),"<q> ".cyan().bold(),
-                ]);
-                match self.state {
-                    State::Selected(_) | State::WasSelected(_) => lines = self.args.iter().map(|a| Line::from(String::clone(a))).collect(),
-                    State::Editing(index_name, index_char) => {
-                        lines = self.args_name.iter().map(|arg| Line::from(String::clone(arg))).collect();
-                        for index in 0..lines.len() {
-                            if let Some(arg) = self.args.get(index) {
-                                if index == index_name {
-                                    let mut cursor = String::clone(arg);
-                                    cursor.insert_str(index_char+1, "|");
-                                    lines.insert((index*2)+1, Line::from(cursor))
-                                }
-                                else {
-                                    lines.insert((index*2)+1, Line::from(String::clone(arg))); 
-                                }
-                            }
-                            else {
-                                lines.insert((index*2)+1, Line::from(String::from("...")));
-                            }
-                        }
-                    }
-                }
-            },
-            _ => {
-                title = Line::from(" Default ".bold());
-                instructions = Line::from(vec![" Default ".into()," Quit ".into(),"<Q> ".cyan().bold()]);
-                lines = self.args.iter().map(|a| Line::from(String::clone(a))).collect();
-            },
-        }
-        let block = Block::bordered()
-            .title(title.centered())
-            .title_bottom(instructions.centered())
-            .border_set(border::ROUNDED);
-        
-        if lines.len() > 0 {
-            match self.state {
-                State::Selected(index) => lines[index] = Line::clone(&lines[index]).patch_style(Color::LightCyan),
-                State::WasSelected(index) => lines[index] = Line::clone(&lines[index]).patch_style(Color::Cyan),
-                State::Editing(index_name, index_char) => {
-                    lines[index_name+1] = Line::clone(&lines[index_name+1]).patch_style(Color::LightYellow);
-                }
-            }
-        }
-        let content = Text::from(lines);
+impl WidgetConfigurations {
+    pub fn from(values:Vec<Configuration>,state:State) -> Self {
+        WidgetConfigurations { values, state }
+    }
 
-        Paragraph::new(content)
-            .centered()
-            .block(block)
-            .render(area, buf);
+    pub fn get_values(&self) -> &Vec<Configuration> {
+        &self.values
+    }
+
+    pub fn get_mut_values(&mut self) -> &mut Vec<Configuration> {
+        &mut self.values
+    }
+
+    pub fn get_state(&self) -> State {
+        State::clone(&self.state)
+    }
+
+    pub fn set_state(&mut self, state:State) {
+        self.state = state
+    }
+
+    pub fn set_values(&mut self, values:Vec<Configuration>) {
+        if values.len()>0 { self.values = values }
+        else { self.values = vec![Configuration::default()] }
+    }
+
+    fn constraint_len_calculator(&self) -> (u16, u16) {
+        let value_len = self.get_values().iter().map(|cnx| cnx.get_value().width()).max().unwrap_or(4);
+        let kind_len = self.get_values().iter().map(|cnx| cnx.get_kind().width()).max().unwrap_or(4);
+        #[allow(clippy::cast_possible_truncation)]
+        (value_len as u16, kind_len as u16)
+    }
+
+    pub fn render(&mut self, frame: &mut Frame, area: Rect) {
+        let header_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .fg(HEADER);
+        let selected_row_style = Style::default()
+            .add_modifier(Modifier::REVERSED)
+            .fg(ROW_SELECTED);
+        let selected_col_style = Style::default().fg(COLUMN_SELECTED);
+
+        let selected_cell_style = Style::default()
+            .add_modifier(Modifier::BOLD)
+            .fg(CELL_SELECTED);
+        let header = ["Kind", "Value"]
+            .into_iter()
+            .map(Cell::from)
+            .collect::<Row>()
+            .style(header_style)
+            .height(1);
+        let rows = self.values.iter().enumerate().map(|(i, configuration)| {
+            let color = match i % 2 {
+                0 => ROW_PEER,
+                _ => ROW_ODD,
+            };
+            let item = [configuration.get_kind(), configuration.get_value()];
+            item.into_iter()
+                .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
+                .collect::<Row>()
+                .style(Style::new().fg(ROW_FONT).bg(color))
+                .height(4)
+        });
+        let bar = " █ ";
+        let len_constraints = self.constraint_len_calculator();
+        let block = Block::bordered().border_set(border::ROUNDED);
+        let t = Table::new(
+            rows,
+            [
+                Constraint::Length(len_constraints.0 + 1),
+                Constraint::Min(len_constraints.1 + 1),
+                Constraint::Min(len_constraints.1),
+            ],)
+            .header(header)
+            .row_highlight_style(selected_row_style)
+            .column_highlight_style(selected_col_style)
+            .cell_highlight_style(selected_cell_style)
+            .highlight_symbol(Text::from(vec![
+                "".into(),
+                bar.into(),
+                bar.into(),
+                "".into(),
+            ]))
+            .bg(Color::Black)
+            .highlight_spacing(HighlightSpacing::Always)
+            .block(block);
+        match self.get_state() {
+            State::Selected(mut ts) | State::WasSelected(mut ts) => frame.render_stateful_widget(t, area, &mut ts),
+            State::Editing(mut ts, _) => frame.render_stateful_widget(t, area, &mut ts)
+        }
     }
 }

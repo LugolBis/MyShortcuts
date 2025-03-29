@@ -1,5 +1,6 @@
 mod database;
 mod utils;
+mod objects;
 mod ui;
 mod app;
 

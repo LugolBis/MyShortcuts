@@ -2,6 +2,9 @@ use sqlite::Value;
 
 const DB_NAME: &str = "my_shortcuts.db";
 
+pub const NEO4J_SHEME: [&str;5] = ["Host","Port","Username","Password","Database"];
+pub const POSTGRESQL_SHEME: [&str;5] = ["Host","Port","Username","Password","Database"];
+
 pub struct Database;
 
 impl Database {

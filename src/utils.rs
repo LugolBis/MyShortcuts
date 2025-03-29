@@ -28,20 +28,12 @@ pub mod macros {
         };
     }
 
-    #[macro_export]
-    macro_rules! result_string {
-        ($text: expr) => {
-            String::from($text.replace(";"," ").trim_end())
-        };
-    }
-
     /// This macro take 3 arguments : a text, a pattern (used to split the text),<br>
     /// a boolean (used to specified if you need the specific name format)
     #[macro_export]
     macro_rules! result_vec {
-        ($text: expr, $pattern: expr, $is_name: expr) => {
-            if $is_name { $text.split($pattern).filter(|e| !e.is_empty() && e!=&"\n").map(|e| result_string!(e)).collect::<Vec<String>>() }
-            else { $text.split($pattern).filter(|e| !e.is_empty() && e!=&"\n").map(String::from).collect::<Vec<String>>() }
+        ($text: expr, $pattern: expr) => {
+            $text.split($pattern).filter(|e| !e.is_empty() && e!=&"\n").map(String::from).collect::<Vec<String>>()
         };
     }
 
@@ -60,14 +52,8 @@ pub mod macros {
 #[test]
 fn test_macro() {
     use super::*;
-
     assert_eq!(format_config!(vec![String::from("juju"),String::from("lulu")]),String::from("juju;lulu;"));
-
-    assert_eq!(result_string!("tutu;lulu;"), String::from("tutu lulu"));
-
-    assert_eq!(result_vec!("tutu;lulu;",";",false), vec![String::from("tutu"),String::from("lulu")]);
-    assert_eq!(result_vec!("tutu;lulu;\njuju;jojo;","\n",true), vec![String::from("tutu lulu"),String::from("juju jojo")]);
-
+    assert_eq!(result_vec!("tutu;lulu;",";"), vec![String::from("tutu"),String::from("lulu")]);
     assert_eq!(neo4j!(vec!["localhost","7687","userA","password"]),String::from("cypher-shell -a neo4j://localhost:7687 -u userA -p 'password'"));
     assert_eq!(neo4j!(vec!["localhost","7687","userA","password","my_db"]),String::from("cypher-shell -a neo4j://localhost:7687 -u userA -p 'password' -d my_db"));
 }
