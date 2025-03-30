@@ -2,8 +2,12 @@ use sqlite::Value;
 
 const DB_NAME: &str = "my_shortcuts.db";
 
-pub const NEO4J_SHEME: [&str;5] = ["Host","Port","Username","Password","Database"];
-pub const POSTGRESQL_SHEME: [&str;5] = ["Host","Port","Username","Password","Database"];
+/// Used For the following databases : Neo4j, PostgreSQL
+pub const CLASSIC_SHEME: [&str;6] = ["Host","Port","Username","Password","Database","Script Path"];
+/// Used for the shell command
+pub const CUSTOM_SHEME: [&str;1] = ["Command"];
+/// Used to choose what kind of shortcut you need.
+pub const AVAILABLE_SHEME: [&str;3] = ["Neo4j","PostgreSQL","Custom"];
 
 pub struct Database;
 

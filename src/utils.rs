@@ -42,8 +42,21 @@ pub mod macros {
     #[macro_export]
     macro_rules! neo4j {
         ($vector: expr) => {
-            if $vector.len() == 4 { format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}'",$vector[0],$vector[1],$vector[2],$vector[3]) }
-            else if $vector.len() == 5 { format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}' -d {}",$vector[0],$vector[1],$vector[2],$vector[3],$vector[4]) }
+            if $vector.len() == 4 {format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}'",$vector[0],$vector[1],$vector[2],$vector[3])}
+            else if $vector.len() == 5 {format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}' -d {}",$vector[0],$vector[1],$vector[2],$vector[3],$vector[4])}
+            else if $vector.len() == 6 {format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}' -d {} -f {}",$vector[0],$vector[1],$vector[2],$vector[3],$vector[4],$vector[5])}
+            else { format!("echo 'Inconsistent connection configuration {:?}'",$vector) }
+        };
+    }
+
+    /// This macro generate a bash command to connect to neo4j<br>
+    /// from a vector of String or &str
+    #[macro_export]
+    macro_rules! postgresql {
+        ($vector: expr) => {
+            if $vector.len() == 4 {format!("export PGPASSWORD='{}' && psql -U {} -h {} -p {}",$vector[3],$vector[2],$vector[0],$vector[1])}
+            else if $vector.len() == 5 {format!("export PGPASSWORD='{}' && psql -U {} -h {} -p {} -d {}",$vector[3],$vector[2],$vector[0],$vector[1],$vector[4])}
+            else if $vector.len() == 6 {format!("export PGPASSWORD='{}' && psql -U {} -h {} -p {} -d {} -f {}",$vector[3],$vector[2],$vector[0],$vector[1],$vector[4],$vector[5])}
             else { format!("echo 'Inconsistent connection configuration {:?}'",$vector) }
         };
     }

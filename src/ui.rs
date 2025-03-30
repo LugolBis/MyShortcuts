@@ -52,10 +52,10 @@ impl WidgetConnections {
     }
 
     fn constraint_len_calculator(&self) -> (u16, u16) {
-        let name_len = self.values.iter().map(|cnx| cnx.get_name().width()).max().unwrap_or(0);
-        let kind_len = self.values.iter().map(|cnx| cnx.get_kind().width()).max().unwrap_or(0);
+        let name_len = self.values.iter().map(|cnx| cnx.get_name().width()).max().unwrap_or(0)+1;
+        let kind_len = self.values.iter().map(|cnx| cnx.get_kind().width()).max().unwrap_or(0)+1;
         #[allow(clippy::cast_possible_truncation)]
-        (name_len.max(5) as u16, kind_len.max(5) as u16)
+        (name_len.max(5) as u16, kind_len.max(6) as u16)
     }
 
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
@@ -90,7 +90,7 @@ impl WidgetConnections {
         });
         let bar = " █ ";
         let len_constraints = self.constraint_len_calculator();
-        let block = Block::bordered().border_set(border::ROUNDED);
+        let block = Block::bordered().border_set(border::ROUNDED).title_top(Line::from(" Shortcuts ").centered());
         let t = Table::new(
             rows,
             [
@@ -145,10 +145,10 @@ impl WidgetConfigurations {
     }
 
     fn constraint_len_calculator(&self) -> (u16, u16) {
-        let value_len = self.get_values().iter().map(|cnx| cnx.get_value().width()).max().unwrap_or(4);
-        let kind_len = self.get_values().iter().map(|cnx| cnx.get_kind().width()).max().unwrap_or(4);
+        let value_len = self.get_values().iter().map(|cnx| cnx.get_value().width()).max().unwrap_or(4)+1;
+        let kind_len = self.get_values().iter().map(|cnx| cnx.get_kind().width()).max().unwrap_or(4)+1;
         #[allow(clippy::cast_possible_truncation)]
-        (value_len as u16, kind_len as u16)
+        (value_len.max(6) as u16, kind_len.max(9) as u16)
     }
 
     pub fn render(&mut self, frame: &mut Frame, area: Rect) {
@@ -163,7 +163,7 @@ impl WidgetConfigurations {
         let selected_cell_style = Style::default()
             .add_modifier(Modifier::BOLD)
             .fg(CELL_SELECTED);
-        let header = ["Kind", "Value"]
+        let header = ["Property", "Value"]
             .into_iter()
             .map(Cell::from)
             .collect::<Row>()
@@ -183,7 +183,7 @@ impl WidgetConfigurations {
         });
         let bar = " █ ";
         let len_constraints = self.constraint_len_calculator();
-        let block = Block::bordered().border_set(border::ROUNDED);
+        let block = Block::bordered().border_set(border::ROUNDED).title_top(Line::from(" Configuration ").centered());
         let t = Table::new(
             rows,
             [
