@@ -3,10 +3,10 @@ use std::fs::OpenOptions;
 use std::io::Write;
 
 use crate::{objects::*, postgresql};
-use crate::ui::{WidgetConfigurations,WidgetConnections};
+use crate::ui::{WidgetConfigurations,WidgetConnections,Common};
 use crate::database::{Database,CLASSIC_SHEME,CUSTOM_SHEME,AVAILABLE_SHEME};
 use crate::utils::run_bash;
-use crate::{neo4j, result_vec, format_config};
+use crate::{neo4j, format_config, filter_config};
 
 use ratatui::{
     widgets::{TableState,Clear,Block,Paragraph},layout::Flex,prelude::{Constraint, Layout, Direction, Rect},
@@ -24,6 +24,7 @@ pub fn main_app() -> io::Result<()> {
 pub struct App {
     connections:WidgetConnections,
     configurations:WidgetConfigurations,
+    /// The name of the Shortcut before any modification
     save: String,
     show_pop_up: (bool,usize),
     exit: bool,
@@ -86,13 +87,13 @@ impl App {
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match (self.connections.get_state(),self.configurations.get_state(),key_event.code) {
             (State::Selected(mut ts),State::WasSelected(_),KeyCode::Up) => {
-                let index = ts.selected().map_or(0, |i| (i.saturating_sub(1)) % self.connections.get_values().len());
+                let index = ts.selected().map_or(0, |i| if i>0 { i-1 } else { self.connections.get_values().len() });
                 ts.select(Some(index));
                 self.connections.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
             },
             (State::Selected(mut ts),State::WasSelected(_),KeyCode::Down) => {
-                let index = ts.selected().map_or(0, |i| (i.saturating_add(1)) % self.connections.get_values().len());
+                let index = ts.selected().map_or(0, |i| if i<self.connections.get_values().len() { i+1 } else { 0 });
                 ts.select(Some(index));
                 self.connections.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
@@ -107,13 +108,13 @@ impl App {
                 }
             },
             (State::WasSelected(_),State::Selected(mut ts),KeyCode::Up) => {
-                let index = ts.selected().map_or(0, |i| (i.saturating_sub(1)) % self.configurations.get_values().len());
+                let index = ts.selected().map_or(0, |i| if i>0 { i-1 } else { self.configurations.get_values().len() });
                 ts.select(Some(index));
                 self.configurations.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
             },
             (State::WasSelected(_),State::Selected(mut ts),KeyCode::Down) => {
-                let index = ts.selected().map_or(0, |i| (i.saturating_add(1)) % self.configurations.get_values().len());
+                let index = ts.selected().map_or(0, |i| if i<self.configurations.get_values().len() { i+1 } else { 0 });
                 ts.select(Some(index));
                 self.configurations.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
@@ -154,77 +155,118 @@ impl App {
                     }
                 }
             },
+            (State::WasSelected(ts0),State::Selected(ts1),KeyCode::Char('r')) => {
+                if let Some(index0) = ts0.selected() {
+                    if let Some(index1) = ts1.selected() {
+                        self.configurations.get_mut_values()[index1] = Configuration::from("","");
+                        let query = format!("update connections set configuration='{}' where name='{}';",
+                            format_config!(self.configurations.get_values()), self.connections.get_values()[index0].get_name());
+                        let _ = Database::query_write(&query);
+                    }
+                }
+            },
             (State::WasSelected(index),State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => {
                 self.show_pop_up = (false,0);
                 self.connections.set_state(State::Selected(index));
+            },
+            (State::Selected(mut ts0),State::WasSelected(_),KeyCode::Char('e')) => {
+                if let Some(index) = ts0.selected() {
+                    if let Some(connection) =  self.connections.get_values().get(index) {
+                        self.save = String::clone(connection.get_name());
+                        ts0.select_column(Some(1));
+                        self.connections.set_state(State::Editing(ts0, 0));
+                    }
+                }
+            },
+            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Left) => {
+                self.connections.set_state(State::Editing(ts0, cursor.saturating_sub(1)));
+            },
+            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Right) => {
+                if let Some(index) = ts0.selected() {
+                    if cursor<self.connections.get_values()[index].get_name().len() {
+                        self.connections.set_state(State::Editing(ts0, cursor+1));
+                    }
+                }
+            },
+            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Char(new_char)) => {
+                if let Some(index) = ts0.selected() {
+                    if let Some(connection) = self.connections.get_mut_values().get_mut(index) {
+                        connection.get_mut_name().insert(cursor,new_char);
+                        self.connections.set_state(State::Editing(ts0, cursor+1));
+                    }
+                }
+            },
+            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Backspace) => {
+                if let Some(index) = ts0.selected() {
+                    if let Some(connection) = self.connections.get_mut_values().get_mut(index) {
+                        let len_word = connection.get_name().len();
+                        if cursor>0 && len_word>1 {
+                            connection.get_mut_name().remove(cursor-1);
+                            self.connections.set_state(State::Editing(ts0, cursor.saturating_sub(1usize)));
+                        }
+                    } 
+                }
+            },
+            (State::Editing(ts0, _),State::WasSelected(_),KeyCode::Enter) => {
+                if let Some(index) = ts0.selected() {
+                    if let Some(connection) = self.connections.get_values().get(index) {
+                        self.save_editing(String::clone(connection.get_name()),true);
+                    }
+                }
+                self.connections.set_state(State::Selected(ts0))
+            },
+            (State::WasSelected(ts0),State::Selected(mut ts1),KeyCode::Char('e')) => {
+                if let Some(index) = ts0.selected() {
+                    if let Some(connection) = self.connections.get_values().get(index) {
+                        self.save = String::clone(connection.get_name());
+                        ts1.select_column(Some(1));
+                        self.configurations.set_state(State::Editing(ts1, 0));
+                    }
+                }
+            },
+            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Left) => {
+                self.configurations.set_state(State::Editing(ts1, cursor.saturating_sub(1)));
+            },
+            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Right) => {
+                if let Some(index) = ts1.selected() {
+                    if cursor<self.configurations.get_values()[index].get_value().len() {
+                        self.configurations.set_state(State::Editing(ts1, cursor+1));
+                    }
+                }
+            },
+            (_,_,KeyCode::Char('é')) => {}
+            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Char(new_char)) => {
+                if let Some(index) = ts1.selected() {
+                    if let Some(configuration) = self.configurations.get_mut_values().get_mut(index) {
+                        configuration.get_mut_value().insert(cursor,new_char);
+                        self.configurations.set_state(State::Editing(ts1, cursor+1));
+                    }
+                }
+            },
+            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Backspace) => {
+                if let Some(index) = ts1.selected() {
+                    if let Some(configuration) = self.configurations.get_mut_values().get_mut(index) {
+                        let len_word = configuration.get_value().len();
+                        if cursor>0 && len_word>1 {
+                            configuration.get_mut_value().remove(cursor-1);
+                            self.configurations.set_state(State::Editing(ts1, cursor.saturating_sub(1usize)));
+                        }
+                    } 
+                }
+            },
+            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Enter) => {
+                if let Some(index) = ts1.selected() {
+                    if let Some(configuration) = self.configurations.get_values().get(index) {
+                        self.save_editing(String::clone(configuration.get_value()),false);
+                    }
+                }
+                self.configurations.set_state(State::Selected(ts1))
             },
             (State::Selected(_),State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
             (State::WasSelected(_),State::Selected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
             (_,_,_) => {}
         }
     }
-
-    /* 
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
-        match (self.widgets[0].get_state(), self.widgets[1].get_state(),key_event.code) {
-            (State::WasSelected(index0),State::Selected(index1),KeyCode::Char('a')) => {
-                self.widgets[1].get_mut_args().insert(index1, String::from("DefaultNewArgument"));
-                let new_config = format_config!(self.widgets[1].get_args());
-                if let Some(name) = result_vec!(self.widgets[0].get_arg(index0).unwrap()," ",false).get(1) {
-                    let _ = Database::query_write(&format!("update connections set configuration='{}' where name='{}';",new_config,name));
-                }
-            },
-            (State::WasSelected(index0),State::Selected(index1),KeyCode::Char('r')) => {
-                self.widgets[1].get_mut_args().remove(index1);
-                let new_config = format_config!(self.widgets[1].get_args());
-                if let Some(name) = result_vec!(self.widgets[0].get_arg(index0).unwrap()," ",false).get(1) {
-                    let _ = Database::query_write(&format!("update connections set configuration='{}' where name='{}';",new_config,name));
-                }
-            },
-            (State::WasSelected(_),State::Selected(index),KeyCode::Char('e')) => {
-                self.save = String::clone(self.widgets[1].get_arg(index).unwrap());
-                self.widgets[1].set_state(State::Editing(index, 0usize));
-            },
-            (State::WasSelected(_),State::Editing(index_name, index_edit),KeyCode::Char(new_char)) => {
-                if let Some(name) = self.widgets[1].get_mut_arg(index_name) {
-                    name.insert(index_edit+1,new_char);
-                    self.widgets[1].set_state(State::Editing(index_name, index_edit+1));
-                }
-            },
-            (State::WasSelected(_),State::Editing(index_name,index_edit),KeyCode::Left) => {
-                self.widgets[1].set_state(State::Editing(index_name, index_edit.saturating_sub(1usize)));
-            },
-            (State::WasSelected(_),State::Editing(index_name,index_edit),KeyCode::Right) => {
-                if index_edit < self.widgets[1].get_arg(index_name).unwrap().len()-1 {
-                    self.widgets[1].set_state(State::Editing(index_name, index_edit+1usize));
-                }
-            },
-            (State::WasSelected(_),State::Editing(index_name,index_edit),KeyCode::Backspace) => {
-                if let Some(name) = self.widgets[1].get_mut_arg(index_name) {
-                    if index_edit<name.len() && name.len()>1 {
-                        name.remove(index_edit);
-                        self.widgets[1].set_state(State::Editing(index_name, index_edit.saturating_sub(1usize)));
-                    }
-                } 
-            },
-            (State::WasSelected(index_name),State::Editing(index,_),KeyCode::Enter) => {
-                if let Some(name) = result_vec!(self.widgets[0].get_arg(index_name).unwrap()," ",false).get(1) {
-                    match Database::query_write(&format!("update connections set configuration='{}' where name='{}'",name,format_config!(self.widgets[1].get_args()))) {
-                        Ok(_) => {
-                            self.widgets[1].set_state(State::Selected(index));
-                            self.save = String::new();
-                        },
-                        Err(error) => {
-                            if let Ok(mut file) = OpenOptions::new().create(true).write(true).append(true).open("logs.txt") {
-                                let _ = file.write_all(format!("ERROR when try to Update the name '{}' to '{}' :\n  {}\n",self.save,name,error).as_bytes());
-                            }
-                        }
-                    }
-                }
-            }
-            (_,_,_) => {}
-        }
-    }*/
 
     fn update_widgets_args(&mut self) {
         if let Ok(connections) = Database::query_read("select name,type from connections order by type;") {
@@ -237,16 +279,16 @@ impl App {
                     if let Ok(mut configurations) = Database::query_read(
                         &format!("select configuration from connections where name='{}';",connection.get_name()))
                     {
-                        //let configurations = ;
                         let new_configurations: Vec<Configuration>;
                         if *&["Neo4j","PostgreSQL"].contains(&connection.get_kind().as_str()) {
+                            let configurations = configurations.split(";").map(|c| c).collect::<Vec<&str>>();
                             new_configurations = CLASSIC_SHEME.iter().enumerate()
                             .map(|(index,kind)|
-                                if let Some(value) = result_vec!(configurations,";").get(index) {Configuration::from(value, *kind)}
+                                if let Some(value) = configurations.get(index) {Configuration::from(value, *kind)}
                                 else {Configuration::from("",*kind)}).collect();
                         }
                         else {
-                            configurations.pop();
+                            configurations.pop(); configurations.pop();
                             new_configurations = vec![Configuration::from(&configurations, CUSTOM_SHEME[0])];
                         }
                         self.configurations.set_values(new_configurations);
@@ -309,20 +351,21 @@ impl App {
 
     fn execute_shortcut(&self, kind:&String) {
         if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open("current_command.txt") {
+            let mut command: String;
             if kind == "Neo4j" {
-                if let Ok(_) = file.write_all(neo4j!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()).as_bytes()) {
-                    let _ = run_bash();
-                }
+                command = neo4j!(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
             }
             else if kind == "PostgreSQL" {
-                if let Ok(_) = file.write_all(postgresql!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()).as_bytes()) {
-                    let _ = run_bash();
-                }
+                command = postgresql!(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
             }
             else if kind == "Custom" {
-                if let Ok(_) = file.write_all(self.configurations.get_values()[0].get_value().as_bytes()) {
-                    let _ = run_bash();
-                }
+                command = String::clone(self.configurations.get_values()[0].get_value());
+            }
+            else {
+                command = String::from("echo 'Welcome on MyShortcuts !'");
+            }
+            if let Ok(_) = file.write_all(command.as_bytes()) {
+                let _ = run_bash();
             }
         }
     }
@@ -334,10 +377,22 @@ impl App {
         match kind {
             "Neo4j" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','Neo4j')",total_connections),
             "PostgreSQL" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','PostgreSQL')",total_connections),
-            "Custom" => query = format!("insert into connections values ('Default{}','Your shell command','Custom')",total_connections),
+            "Custom" => query = format!("insert into connections values ('Default{}','echo Welcome on MyShortcuts','Custom')",total_connections),
             _ => query = String::new()
         }
         let _ = Database::query_write(&query);
+    }
+
+    fn save_editing(&mut self,new_value:String,is_connection:bool) {
+        let query: String;
+        if is_connection {
+            query = format!("update connections set name='{}' where name='{}';",new_value, self.save);
+        }
+        else {
+            query = format!("update connections set configuration='{}' where name='{}';",format_config!(self.configurations.get_values()), self.save);
+        }
+        let _ = Database::query_write(&query);
+        self.save = String::new();
     }
 }
 

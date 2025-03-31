@@ -24,7 +24,22 @@ pub mod macros {
     #[macro_export]
     macro_rules! format_config {
         ($vector: expr) => {
-            $vector.into_iter().map(|e| format!("{};",e)).collect::<String>()
+            $vector.into_iter().map(|e| format!("{};",e.get_value())).collect::<String>()
+        };
+    }
+
+    #[macro_export]
+    macro_rules! filter_config {
+        ($vector: expr) => {
+            {
+                let mut result = $vector;
+                let mut last_index = result.len()-1;
+                while result[last_index] == "" || result[last_index] == "\n"  {
+                    result.pop();
+                    last_index -= 1usize;
+                }
+                result
+            }
         };
     }
 
@@ -65,7 +80,9 @@ pub mod macros {
 #[test]
 fn test_macro() {
     use super::*;
-    assert_eq!(format_config!(vec![String::from("juju"),String::from("lulu")]),String::from("juju;lulu;"));
+    use crate::objects::Configuration;
+    assert_eq!(format_config!(vec![Configuration::default()]),String::from("echo Welcome on MyShortcuts;"));
+    assert_eq!(filter_config!(vec![String::from("lulu"),String::new(),String::from("tutu"),String::new(),String::new()]),vec![String::from("lulu"),String::new(),String::from("tutu")]);
     assert_eq!(result_vec!("tutu;lulu;",";"), vec![String::from("tutu"),String::from("lulu")]);
     assert_eq!(neo4j!(vec!["localhost","7687","userA","password"]),String::from("cypher-shell -a neo4j://localhost:7687 -u userA -p 'password'"));
     assert_eq!(neo4j!(vec!["localhost","7687","userA","password","my_db"]),String::from("cypher-shell -a neo4j://localhost:7687 -u userA -p 'password' -d my_db"));

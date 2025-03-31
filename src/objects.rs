@@ -21,7 +21,7 @@ pub struct Configuration {
 
 impl Connection {
     pub fn default() -> Self {
-        Connection { name: String::from("DefaultName"), kind: String::from("UnknowKind") }
+        Connection { name: String::from("Default0"), kind: String::from("Custom") }
     }
 
     pub fn from(name:&str, kind:&str) -> Self {
@@ -57,7 +57,7 @@ impl Connection {
 
 impl Configuration {
     pub fn default() -> Self {
-        Configuration { value: String::from("DefaultValue"), kind: String::from("DefaultKind") }
+        Configuration { value: String::from("echo Welcome on MyShortcuts"), kind: String::from("DefaultProperty") }
     }
 
     pub fn from(value:&str, kind:&str) -> Self {

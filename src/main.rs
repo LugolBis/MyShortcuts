@@ -7,7 +7,6 @@ mod app;
 use database::Database;
 use app::main_app;
 use std::fs;
-use std::process::Command;
 
 fn main() {
     if !fs::exists("my_shortcuts.db").unwrap_or(false) {
