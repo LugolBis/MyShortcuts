@@ -2,11 +2,12 @@ use std::io;
 use std::fs::OpenOptions;
 use std::io::Write;
 
-use crate::{objects::*, postgresql};
 use crate::ui::{WidgetConfigurations,WidgetConnections,Common};
+
+use crate::objects::*;
 use crate::database::{Database,CLASSIC_SHEME,CUSTOM_SHEME,AVAILABLE_SHEME};
 use crate::utils::run_bash;
-use crate::{neo4j, format_config, filter_config};
+use crate::{neo4j, format_config, filter_config, postgresql};
 
 use ratatui::{
     widgets::{TableState,Clear,Block,Paragraph},layout::Flex,prelude::{Constraint, Layout, Direction, Rect},
@@ -191,8 +192,14 @@ impl App {
             (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Char(new_char)) => {
                 if let Some(index) = ts0.selected() {
                     if let Some(connection) = self.connections.get_mut_values().get_mut(index) {
-                        connection.get_mut_name().insert(cursor,new_char);
-                        self.connections.set_state(State::Editing(ts0, cursor+1));
+                        if connection.get_name().len() > 0 {
+                            connection.get_mut_name().insert(cursor,new_char);
+                            self.connections.set_state(State::Editing(ts0, cursor+1));
+                        }
+                        else {
+                            connection.get_mut_name().push(new_char);
+                            self.connections.set_state(State::Editing(ts0, cursor+1));
+                        }
                     }
                 }
             },
@@ -204,16 +211,22 @@ impl App {
                             connection.get_mut_name().remove(cursor-1);
                             self.connections.set_state(State::Editing(ts0, cursor.saturating_sub(1usize)));
                         }
+                        else {
+                            connection.get_mut_name().clear();
+                            self.connections.set_state(State::Editing(ts0, cursor.saturating_sub(1usize)));
+                        }
                     } 
                 }
             },
             (State::Editing(ts0, _),State::WasSelected(_),KeyCode::Enter) => {
                 if let Some(index) = ts0.selected() {
                     if let Some(connection) = self.connections.get_values().get(index) {
-                        self.save_editing(String::clone(connection.get_name()),true);
+                        if connection.get_name().len()>0 {
+                            self.save_editing(String::clone(connection.get_name()),true);
+                            self.connections.set_state(State::Selected(ts0))  
+                        }
                     }
                 }
-                self.connections.set_state(State::Selected(ts0))
             },
             (State::WasSelected(ts0),State::Selected(mut ts1),KeyCode::Char('e')) => {
                 if let Some(index) = ts0.selected() {
@@ -234,12 +247,17 @@ impl App {
                     }
                 }
             },
-            (_,_,KeyCode::Char('é')) => {}
             (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Char(new_char)) => {
                 if let Some(index) = ts1.selected() {
                     if let Some(configuration) = self.configurations.get_mut_values().get_mut(index) {
-                        configuration.get_mut_value().insert(cursor,new_char);
-                        self.configurations.set_state(State::Editing(ts1, cursor+1));
+                        if configuration.get_value().len() > 0 {
+                            configuration.get_mut_value().insert(cursor,new_char);
+                            self.configurations.set_state(State::Editing(ts1, cursor+1));
+                        }
+                        else {
+                            configuration.get_mut_value().push(new_char);
+                            self.configurations.set_state(State::Editing(ts1, cursor+1));
+                        }
                     }
                 }
             },
@@ -251,6 +269,10 @@ impl App {
                             configuration.get_mut_value().remove(cursor-1);
                             self.configurations.set_state(State::Editing(ts1, cursor.saturating_sub(1usize)));
                         }
+                        else {
+                            configuration.get_mut_value().clear();
+                            self.configurations.set_state(State::Editing(ts1, cursor.saturating_sub(1usize)));
+                        }
                     } 
                 }
             },
@@ -258,9 +280,9 @@ impl App {
                 if let Some(index) = ts1.selected() {
                     if let Some(configuration) = self.configurations.get_values().get(index) {
                         self.save_editing(String::clone(configuration.get_value()),false);
+                        self.configurations.set_state(State::Selected(ts1))
                     }
                 }
-                self.configurations.set_state(State::Selected(ts1))
             },
             (State::Selected(_),State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
             (State::WasSelected(_),State::Selected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),

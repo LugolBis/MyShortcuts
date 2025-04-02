@@ -1,4 +1,4 @@
-use ratatui::widgets::TableState;
+use ratatui::{widgets::TableState,crossterm::event::{self, KeyCode}};
 
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum State {
@@ -78,5 +78,54 @@ impl Configuration {
 
     pub fn get_mut_kind(&mut self) -> &mut String {
         &mut self.kind
+    }
+}
+
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum MyKey {
+    Up,
+    Down,
+    Left,
+    Right,
+    Esc,
+    Enter,
+    Backspace,
+    Add,
+    Edit,
+    Open,
+    Quit,
+    Remove,
+    CtrlC,
+    CtrlV,
+    Insert(String)
+}
+
+impl MyKey {
+    pub fn from(event: &event::Event) -> Option<MyKey> {
+        if let event::Event::Key(key) = event {
+            let ctrl = key.modifiers.contains(event::KeyModifiers::CONTROL);
+    
+            match key.code {
+                KeyCode::Up => Some(MyKey::Up),
+                KeyCode::Down => Some(MyKey::Down),
+                KeyCode::Left => Some(MyKey::Left),
+                KeyCode::Right => Some(MyKey::Right),
+                KeyCode::Esc => Some(MyKey::Esc),
+                KeyCode::Enter => Some(MyKey::Enter),
+                KeyCode::Backspace => Some(MyKey::Backspace),
+                KeyCode::Char('a') if ctrl => Some(MyKey::Add),
+                KeyCode::Char('e') if ctrl => Some(MyKey::Edit),
+                KeyCode::Char('o') if ctrl => Some(MyKey::Open),
+                KeyCode::Char('q') if ctrl => Some(MyKey::Quit),
+                KeyCode::Char('r') if ctrl => Some(MyKey::Remove),
+                KeyCode::Char('c') if ctrl => Some(MyKey::CtrlC),
+                KeyCode::Char('v') if ctrl => Some(MyKey::CtrlV),
+                KeyCode::Char(char) => Some(MyKey::Insert(String::from(char))),
+                _ => None
+            }
+        }
+        else {
+            None
+        }
     }
 }

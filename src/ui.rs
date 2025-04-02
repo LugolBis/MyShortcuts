@@ -197,7 +197,12 @@ pub trait Common {
                 rows = self.get_rows();
                 if let Some(index) = ts.selected() {
                     let mut editing_value = self.get_editing_value(index);
-                    editing_value[1].insert_str(cursor,"|");
+                    if editing_value[1].len() > 0 {
+                        editing_value[1].insert_str(cursor,"|");
+                    }
+                    else {
+                        editing_value[1].push('|');
+                    }
                     rows[index] = editing_value.into_iter().map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                     .collect::<Row>().style(Style::new().bg(Color::Black)).height(4);
                 }
