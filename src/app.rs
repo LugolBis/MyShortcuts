@@ -14,6 +14,8 @@ use ratatui::{
     DefaultTerminal, Frame,crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},text::{Line,Text},
     style::Color
 };
+use tui_input::backend::crossterm::EventHandler;
+use tui_input::Input;
 
 pub fn main_app() -> io::Result<()> {
     let mut terminal = ratatui::init();
@@ -45,9 +47,7 @@ impl App {
 
     pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
         while !self.exit {
-            if self.save == "" {
-                self.update_widgets_args();
-            }
+            self.update_widgets_args();
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
@@ -76,25 +76,46 @@ impl App {
     }
 
     fn handle_events(&mut self) -> io::Result<()> {
-        match event::read()? {
-            Event::Key(key_event) if key_event.kind == KeyEventKind::Press => {
-                self.handle_key_event(key_event)
+        let event = event::read()?;
+        if let Event::Key(key) = event {
+            match (self.connections.get_state(),self.configurations.get_state()) {
+                (State::Editing(ts0, input),State::WasSelected(_)) if key.code == KeyCode::Enter => {
+                    self.save_editing(input.value().into(), true);
+                    self.connections.set_state(State::Selected(ts0));
+                },
+                (State::WasSelected(_),State::Editing(ts1, input)) if key.code == KeyCode::Enter => {
+                    self.save_editing(input.value().into(), false);
+                    self.configurations.set_state(State::Selected(ts1));
+                },
+                (State::Editing(ts0, input),_) => {
+                    let mut new_input = input;
+                    new_input.handle_event(&event);
+                    self.connections.set_state(State::Editing(ts0, new_input));
+                }
+                (_, State::Editing(ts1, input)) => {
+                    let mut new_input = input;
+                    new_input.handle_event(&event);
+                    self.configurations.set_state(State::Editing(ts1, new_input));
+                },
+                _ if key.kind == KeyEventKind::Press => {
+                    self.handle_key_event(key);
+                }
+                _ => {}
             }
-            _ => {}
-        };
+        }
         Ok(())
     }
 
     fn handle_key_event(&mut self, key_event: KeyEvent) {
         match (self.connections.get_state(),self.configurations.get_state(),key_event.code) {
             (State::Selected(mut ts),State::WasSelected(_),KeyCode::Up) => {
-                let index = ts.selected().map_or(0, |i| if i>0 { i-1 } else { self.connections.get_values().len() });
+                let index = ts.selected().map_or(0, |i| if i>0 { i-1 } else { self.connections.get_values().len()-1 });
                 ts.select(Some(index));
                 self.connections.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
             },
             (State::Selected(mut ts),State::WasSelected(_),KeyCode::Down) => {
-                let index = ts.selected().map_or(0, |i| if i<self.connections.get_values().len() { i+1 } else { 0 });
+                let index = ts.selected().map_or(0, |i| if i<self.connections.get_values().len()-1 { i+1 } else { 0 });
                 ts.select(Some(index));
                 self.connections.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
@@ -109,13 +130,13 @@ impl App {
                 }
             },
             (State::WasSelected(_),State::Selected(mut ts),KeyCode::Up) => {
-                let index = ts.selected().map_or(0, |i| if i>0 { i-1 } else { self.configurations.get_values().len() });
+                let index = ts.selected().map_or(0, |i| if i>0 { i-1 } else { self.configurations.get_values().len()-1 });
                 ts.select(Some(index));
                 self.configurations.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
             },
             (State::WasSelected(_),State::Selected(mut ts),KeyCode::Down) => {
-                let index = ts.selected().map_or(0, |i| if i<self.configurations.get_values().len() { i+1 } else { 0 });
+                let index = ts.selected().map_or(0, |i| if i<self.configurations.get_values().len()-1 { i+1 } else { 0 });
                 ts.select(Some(index));
                 self.configurations.set_state(State::Selected(ts));
                 // ScrollBar interaction here 
@@ -166,122 +187,42 @@ impl App {
                     }
                 }
             },
-            (State::WasSelected(index),State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => {
+            (State::WasSelected(index), State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => {
                 self.show_pop_up = (false,0);
                 self.connections.set_state(State::Selected(index));
             },
-            (State::Selected(mut ts0),State::WasSelected(_),KeyCode::Char('e')) => {
+            (State::Selected(mut ts0), State::WasSelected(_), KeyCode::Char('e')) => {
                 if let Some(index) = ts0.selected() {
                     if let Some(connection) =  self.connections.get_values().get(index) {
                         self.save = String::clone(connection.get_name());
                         ts0.select_column(Some(1));
-                        self.connections.set_state(State::Editing(ts0, 0));
+                        self.connections.set_state(State::Editing(ts0, Input::with_value(Input::default(), String::clone(connection.get_name()))));
                     }
                 }
             },
-            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Left) => {
-                self.connections.set_state(State::Editing(ts0, cursor.saturating_sub(1)));
-            },
-            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Right) => {
-                if let Some(index) = ts0.selected() {
-                    if cursor<self.connections.get_values()[index].get_name().len() {
-                        self.connections.set_state(State::Editing(ts0, cursor+1));
-                    }
-                }
-            },
-            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Char(new_char)) => {
-                if let Some(index) = ts0.selected() {
-                    if let Some(connection) = self.connections.get_mut_values().get_mut(index) {
-                        if connection.get_name().len() > 0 {
-                            connection.get_mut_name().insert(cursor,new_char);
-                            self.connections.set_state(State::Editing(ts0, cursor+1));
+            (State::WasSelected(ts0), State::Selected(mut ts1), KeyCode::Char('e')) => {
+                match (ts0.selected(), ts1.selected()) {
+                    (Some(index0),Some(index1)) => {
+                        match (self.connections.get_values().get(index0), self.configurations.get_values().get(index1)) {
+                            (Some(connection), Some(configuration)) => {
+                                self.save = String::clone(connection.get_name());
+                                ts1.select_column(Some(1));
+                                self.configurations.set_state(State::Editing(ts1, Input::with_value(
+                                    Input::default(), String::clone(configuration.get_value()))));
+                            }
+                            (Some(connection), None) => {
+                                if let Some(configuration) = self.configurations.get_values().get(0usize) {
+                                    self.save = String::clone(connection.get_name());
+                                    ts1.select_column(Some(1));
+                                    ts1.select(Some(0));
+                                    self.configurations.set_state(State::Editing(ts1, Input::with_value(
+                                        Input::default(), String::clone(configuration.get_value()))));
+                                }
+                            }
+                            _ => {}
                         }
-                        else {
-                            connection.get_mut_name().push(new_char);
-                            self.connections.set_state(State::Editing(ts0, cursor+1));
-                        }
-                    }
-                }
-            },
-            (State::Editing(ts0, cursor),State::WasSelected(_),KeyCode::Backspace) => {
-                if let Some(index) = ts0.selected() {
-                    if let Some(connection) = self.connections.get_mut_values().get_mut(index) {
-                        let len_word = connection.get_name().len();
-                        if cursor>0 && len_word>1 {
-                            connection.get_mut_name().remove(cursor-1);
-                            self.connections.set_state(State::Editing(ts0, cursor.saturating_sub(1usize)));
-                        }
-                        else {
-                            connection.get_mut_name().clear();
-                            self.connections.set_state(State::Editing(ts0, cursor.saturating_sub(1usize)));
-                        }
-                    } 
-                }
-            },
-            (State::Editing(ts0, _),State::WasSelected(_),KeyCode::Enter) => {
-                if let Some(index) = ts0.selected() {
-                    if let Some(connection) = self.connections.get_values().get(index) {
-                        if connection.get_name().len()>0 {
-                            self.save_editing(String::clone(connection.get_name()),true);
-                            self.connections.set_state(State::Selected(ts0))  
-                        }
-                    }
-                }
-            },
-            (State::WasSelected(ts0),State::Selected(mut ts1),KeyCode::Char('e')) => {
-                if let Some(index) = ts0.selected() {
-                    if let Some(connection) = self.connections.get_values().get(index) {
-                        self.save = String::clone(connection.get_name());
-                        ts1.select_column(Some(1));
-                        self.configurations.set_state(State::Editing(ts1, 0));
-                    }
-                }
-            },
-            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Left) => {
-                self.configurations.set_state(State::Editing(ts1, cursor.saturating_sub(1)));
-            },
-            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Right) => {
-                if let Some(index) = ts1.selected() {
-                    if cursor<self.configurations.get_values()[index].get_value().len() {
-                        self.configurations.set_state(State::Editing(ts1, cursor+1));
-                    }
-                }
-            },
-            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Char(new_char)) => {
-                if let Some(index) = ts1.selected() {
-                    if let Some(configuration) = self.configurations.get_mut_values().get_mut(index) {
-                        if configuration.get_value().len() > 0 {
-                            configuration.get_mut_value().insert(cursor,new_char);
-                            self.configurations.set_state(State::Editing(ts1, cursor+1));
-                        }
-                        else {
-                            configuration.get_mut_value().push(new_char);
-                            self.configurations.set_state(State::Editing(ts1, cursor+1));
-                        }
-                    }
-                }
-            },
-            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Backspace) => {
-                if let Some(index) = ts1.selected() {
-                    if let Some(configuration) = self.configurations.get_mut_values().get_mut(index) {
-                        let len_word = configuration.get_value().len();
-                        if cursor>0 && len_word>1 {
-                            configuration.get_mut_value().remove(cursor-1);
-                            self.configurations.set_state(State::Editing(ts1, cursor.saturating_sub(1usize)));
-                        }
-                        else {
-                            configuration.get_mut_value().clear();
-                            self.configurations.set_state(State::Editing(ts1, cursor.saturating_sub(1usize)));
-                        }
-                    } 
-                }
-            },
-            (State::WasSelected(_),State::Editing(ts1, cursor),KeyCode::Enter) => {
-                if let Some(index) = ts1.selected() {
-                    if let Some(configuration) = self.configurations.get_values().get(index) {
-                        self.save_editing(String::clone(configuration.get_value()),false);
-                        self.configurations.set_state(State::Selected(ts1))
-                    }
+                    },
+                    _ => {}
                 }
             },
             (State::Selected(_),State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
@@ -291,12 +232,32 @@ impl App {
     }
 
     fn update_widgets_args(&mut self) {
-        if let Ok(connections) = Database::query_read("select name,type from connections order by type;") {
-            self.connections.set_values(connections.split("\n").filter(|e| *e!="" && *e!="\n")
-                .map(|cnx| if let Ok(cnx)  = Connection::parse(cnx)  {cnx} else {Connection::default()}).collect::<Vec<Connection>>());
-        }
         match self.connections.get_state() {
-            State::Selected(ts) | State::WasSelected(ts) => {
+            State::Editing(ts0, input) => {
+                if let Some(index) = ts0.selected() {
+                    if let Some(connection) = self.connections.get_mut_values().get_mut(index) {
+                        connection.get_mut_name().clone_from(&String::from(input.value()));
+                        return;
+                    }
+                }
+            },
+            _ => {
+                if let Ok(connections) = Database::query_read("select name,type from connections order by type;") {
+                    self.connections.set_values(connections.split("\n").filter(|e| *e!="" && *e!="\n")
+                        .map(|cnx| if let Ok(cnx)  = Connection::parse(cnx)  {cnx} else {Connection::default()}).collect::<Vec<Connection>>());
+                }
+            }
+        }
+        
+        match (self.connections.get_state(), self.configurations.get_state()) {
+            (State::WasSelected(_), State::Editing(ts1, input)) => {
+                if let Some(index) = ts1.selected() {
+                    if let Some(configuration) = self.configurations.get_mut_values().get_mut(index) {
+                        configuration.get_mut_value().clone_from(&String::from(input.value()));
+                    }
+                }
+            },
+            (State::Selected(ts) | State::WasSelected(ts), State::Selected(_) | State::WasSelected(_)) => {
                 if let Some(connection) = self.connections.get_values().get(ts.selected().unwrap_or(0)) {
                     if let Ok(mut configurations) = Database::query_read(
                         &format!("select configuration from connections where name='{}';",connection.get_name()))
@@ -310,14 +271,14 @@ impl App {
                                 else {Configuration::from("",*kind)}).collect();
                         }
                         else {
-                            configurations.pop(); configurations.pop();
+                            configurations.pop(); configurations.pop(); configurations.pop();
                             new_configurations = vec![Configuration::from(&configurations, CUSTOM_SHEME[0])];
                         }
                         self.configurations.set_values(new_configurations);
                     }
                 }
             },
-            State::Editing(_, _) => {}
+            _ => {}
         }
     }
 

@@ -175,7 +175,7 @@ pub trait Common {
         let selected_cell_style: Style;
 
         let mut rows: Vec<ratatui::widgets::Row<'_>>;
-        // rows[0] = [Cell::from("tutu")].into_iter().collect();
+        let mut len_constraints = self.constraint_len_calculator();
 
         match self.get_common_state() {
             State::Selected(_) => {
@@ -190,26 +190,29 @@ pub trait Common {
                 selected_cell_style = Style::default().fg(CELL_WAS_SELECTED);
                 rows = self.get_rows();
             },
-            State::Editing(ts, cursor) => {
+            State::Editing(ts, input) => {
                 selected_row_style = Style::default().add_modifier(Modifier::REVERSED).fg(ROW_WAS_SELECTED);
                 selected_col_style = Style::default().fg(COLUMN_WAS_SELECTED);
                 selected_cell_style = Style::default().add_modifier(Modifier::BOLD).fg(Color::Green);
                 rows = self.get_rows();
+
                 if let Some(index) = ts.selected() {
+                    // Updating the input value in the target row
                     let mut editing_value = self.get_editing_value(index);
-                    if editing_value[1].len() > 0 {
-                        editing_value[1].insert_str(cursor,"|");
-                    }
-                    else {
-                        editing_value[1].push('|');
-                    }
+                    editing_value[1] = input.value().into();
                     rows[index] = editing_value.into_iter().map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
-                    .collect::<Row>().style(Style::new().bg(Color::Black)).height(4);
+                        .collect::<Row>().style(Style::new().bg(Color::Black)).height(4);
+
+                    let width = area.width.max(2) - 3;
+                    let scroll = input.visual_scroll(width as usize);
+                    let cursor_pos = (input.visual_cursor().max(scroll) - scroll + 1) as u16;
+
+                    let (current_x, current_y) = calculate_cursor_position(area, cursor_pos, len_constraints.0, index);
+                    frame.set_cursor_position((current_x, current_y));
                 }
             }
         }
         
-        let len_constraints = self.constraint_len_calculator();
         let block = Block::bordered().border_set(border::ROUNDED).title_top(Line::from(self.get_title()).centered());
         let t = Table::new(rows,[Constraint::Length(len_constraints.0 + 1),Constraint::Length(len_constraints.1 + 1)])
             .header(header)
@@ -225,4 +228,11 @@ pub trait Common {
             State::Editing(mut ts, _) => frame.render_stateful_widget(t, area, &mut ts)
         }
     }
+}
+
+fn calculate_cursor_position(area:Rect, cursor:u16, left_constraint: u16, index: usize) -> (u16, u16) {
+    let x = area.x + cursor + left_constraint + 5u16;
+    let index = if index>11 {11 as u16} else {index as u16};
+    let y = area.y + 2u16 * (index+1) + 2u16 * (index) + 2u16;
+    (x,y)
 }
