@@ -1,6 +1,6 @@
 use ratatui::{
-    prelude::{Constraint,Layout}, layout::Flex, layout::Rect, style::{Color, Stylize, Style,Modifier},Frame,
-    symbols::border, text::{Line, Text}, widgets::{Block, Paragraph, Clear, Cell, Row, Table,HighlightSpacing}
+    layout::Rect, prelude::Constraint, style::{Color, Modifier, Style, Stylize}, symbols::border, text::{Line, Text},
+    widgets::{Block, Cell, HighlightSpacing, Paragraph, Row, Table, TableState}, Frame
 };
 use unicode_width::UnicodeWidthStr;
 use crate::objects::*;
@@ -19,8 +19,8 @@ const CELL_WAS_SELECTED: Color = Color::Rgb(97, 122, 173);
 const CELL_EDITING: Color = Color::Rgb(151,192,80);
 
 #[derive(Debug)]
-pub struct WidgetConnections {
-    values: Vec<Connection>,
+pub struct WidgetShortcuts {
+    values: Vec<Shortcut>,
     state: State
 }
 
@@ -30,16 +30,16 @@ pub struct WidgetConfigurations {
     state: State
 }
 
-impl WidgetConnections {
-    pub fn from(values:Vec<Connection>,state:State) -> Self {
-        WidgetConnections { values, state }
+impl WidgetShortcuts {
+    pub fn from(values:Vec<Shortcut>,state:State) -> Self {
+        WidgetShortcuts { values, state }
     }
 
-    pub fn get_values(&self) -> &Vec<Connection> {
+    pub fn get_values(&self) -> &Vec<Shortcut> {
         &self.values
     }
 
-    pub fn get_mut_values(&mut self) -> &mut Vec<Connection> {
+    pub fn get_mut_values(&mut self) -> &mut Vec<Shortcut> {
         &mut self.values
     }
 
@@ -51,9 +51,9 @@ impl WidgetConnections {
         self.state = state
     }
 
-    pub fn set_values(&mut self,values:Vec<Connection>) {
+    pub fn set_values(&mut self,values:Vec<Shortcut>) {
         if values.len()>0 { self.values = values }
-        else { self.values = vec![Connection::default()] }
+        else { self.values = vec![Shortcut::default()] }
     }
 }
 
@@ -84,7 +84,7 @@ impl WidgetConfigurations {
     }
 }
 
-impl Common for WidgetConnections {
+impl Common for WidgetShortcuts {
     fn get_header(&self) -> [&str;2] {
         [" Kind ", " Name "]
     }
@@ -103,8 +103,8 @@ impl Common for WidgetConnections {
     }
 
     fn get_rows(&self) -> Vec<ratatui::widgets::Row<'_>> {
-        self.values.iter().map(|connection| {
-            let item = [connection.get_kind(), connection.get_name()];
+        self.values.iter().map(|shortcut| {
+            let item = [shortcut.get_kind(), shortcut.get_name()];
             item.into_iter()
                 .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                 .collect::<Row>()
@@ -240,25 +240,45 @@ fn calculate_cursor_position(area:Rect, cursor:u16, left_constraint: u16, index:
     (x,y)
 }
 
-pub fn render_pop_up(frame: &mut Frame, index:usize) {
-    let mut lines = AVAILABLE_SHEME.iter().map(|kind| 
-        Line::from(format!("\n{}\n",*kind)).style(Style::default().fg(ROW_FONT)))
-        .collect::<Vec<Line>>();
-    lines[index] = Line::clone(&lines[index]).patch_style(COLUMN_SELECTED);
-    let content = Text::from(lines);
+pub fn render_pop_up(frame: &mut Frame, index:usize, area: Rect) {
+    let mut rows: Vec<Row<'_>> = AVAILABLE_SHEME.iter().map(|kind| {
+        let item = format!("{}",*kind);
+        Row::default().cells(vec![Line::from(item).centered()])
+        .style(Style::new().fg(ROW_FONT).bg(ROW_BG)).height(2)   
+    }).collect();
+
+    rows[index] = Row::clone(&rows[index]).style(Style::new().bg(Color::Black).fg(CELL_SELECTED)).height(2);
+
     let block = Block::bordered().border_set(border::ROUNDED).title(Line::from(" Select a kind of Shortcut " ).centered())
         .title_style(Style::default().add_modifier(Modifier::BOLD).fg(HEADER))
-        .style(Style::default().fg(ROW_FONT));
-    let area = popup_area(frame.area(), 50, 50);
-    let paragraph = Paragraph::new(content).centered().block(block);
-    frame.render_widget(Clear, area);
-    frame.render_widget(paragraph, area);
+        .style(Style::default().fg(ROW_FONT).bg(Color::Black));
+
+    let t = Table::new(rows,[Constraint::Percentage(100),Constraint::Length(0)])
+        .bg(Color::Black).fg(ROW_FONT).block(block);
+
+    let mut ts = TableState::default();
+    ts.select(Some(index));
+    frame.render_stateful_widget(t, area, &mut ts)
 }
 
-fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
-    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
-    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
-    let [area] = vertical.areas(area);
-    let [area] = horizontal.areas(area);
-    area
+pub fn render_help(frame: &mut Frame, area: Rect) {
+    let title = Line::from(" Help command ".bold());
+    let lines = vec![
+        Line::from(vec![]),
+        Line::from(vec![" Select : ".into(), "<Up>".yellow(), " / ".into(), "<Down>".yellow(), " / ".into(), "<Left>".yellow(), " / ".into(), "<Right>".yellow()]),
+        Line::from(vec![" Add new shortcut : ".into(), "<a> ".yellow()]),
+        Line::from(vec![" Remove shortcut/configuration value : ".into(), "<r> ".yellow()]),
+        Line::from(vec![" Open the selected shortcut : ".into(), "<o> ".yellow()]),
+        Line::from(vec![" Edit shortcut name/configuration value : ".into(), "<e> ".yellow()]),
+        Line::from(vec![" To save editing : ".into(), "<Enter> ".yellow()]),
+        Line::from(vec![" Quit : ".into(), "<q>".yellow(), " / ".into(), "<Esc> ".yellow()])
+    ];
+
+    let block = Block::bordered()
+        .title(title.centered()).title_style(Style::default().add_modifier(Modifier::BOLD).fg(HEADER))
+        .bg(Color::Black).fg(ROW_FONT)
+        .border_set(border::ROUNDED);
+
+    let p = Paragraph::new(Text::from(lines).style(CELL_SELECTED)).block(block);
+    frame.render_widget(p, area);
 }

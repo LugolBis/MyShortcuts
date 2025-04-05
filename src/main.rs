@@ -18,10 +18,10 @@ fn main() {
         }
         else {
             let _lulu = Database::query_write("
-                insert into connections values ('c1', '127.0.0.1;userA;ma_db;password', 'Neo4j');
-                insert into connections values ('c2', 'config2', 'MySQL');
-                insert into connections values ('c3', 'config3', 'Neo4j');
-                insert into connections values ('c4', 'config4', 'Neo4j');
+                insert into shortcuts values ('c1', '127.0.0.1;userA;ma_db;password', 'Neo4j');
+                insert into shortcuts values ('c2', 'config2', 'MySQL');
+                insert into shortcuts values ('c3', 'config3', 'Neo4j');
+                insert into shortcuts values ('c4', 'config4', 'Neo4j');
             ");
         }
     }
@@ -55,35 +55,5 @@ fn test_sqlite() {
     match Database::query_read("SELECT * FROM test") {
         Ok(res) => println!("{res}"),
         Err(res) => println!("{res}")
-    }
-}
-
-fn test_input() {
-    use objects::*;
-    use tui_input::Input;
-    use ratatui::widgets::TableState;
-    use ratatui::crossterm::event::{self,Event};
-    use tui_input::backend::crossterm::EventHandler;
-    
-    let connection = Connection::default();
-    let mut input = Input::with_value(Input::default(), String::clone(connection.get_name()));
-    let mut my_state = State::Editing(TableState::new(), input);
-    let mut compteur = 0usize;
-    loop {
-        if let Ok(event) = event::read() {
-            if let Event::Key(key) = event {
-                match my_state {
-                    State::Editing(_, ref mut input) => {
-                        input.handle_event(&event);
-                        println!("{}",input.value());
-                        compteur+=1;
-                    }
-                    _ => {print!("not editing...")}
-                }
-            }
-            else {print!("no key...")}
-        }
-        else {print!("no event...")}
-        if compteur>5 {break}
     }
 }

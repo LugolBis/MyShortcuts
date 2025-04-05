@@ -1,5 +1,4 @@
-use ratatui::{widgets::TableState,crossterm::event::{self, KeyCode}};
-use tui_input::backend::crossterm::EventHandler;
+use ratatui::widgets::TableState;
 use tui_input::Input;
 
 #[derive(Debug, Clone)]
@@ -10,7 +9,7 @@ pub enum State {
 }
 
 #[derive(Debug)]
-pub struct Connection {
+pub struct Shortcut {
     name: String,
     kind: String
 }
@@ -21,22 +20,22 @@ pub struct Configuration {
     kind: String
 }
 
-impl Connection {
+impl Shortcut {
     pub fn default() -> Self {
-        Connection { name: String::from("Default0"), kind: String::from("Custom") }
+        Shortcut { name: String::from("Default0"), kind: String::from("Custom") }
     }
 
     pub fn from(name:&str, kind:&str) -> Self {
-        Connection { name: String::from(name), kind: String::from(kind) }
+        Shortcut { name: String::from(name), kind: String::from(kind) }
     }
 
     pub fn parse(value:&str) -> Result<Self,String> {
         let vector = value.split(";").collect::<Vec<&str>>();
         if let (Some(name),Some(kind)) = (vector.get(0),vector.get(1)) {
-            Ok(Connection {name: String::from(*name), kind: String::from(*kind)})
+            Ok(Shortcut {name: String::from(*name), kind: String::from(*kind)})
         }
         else {
-            Err(format!("ERROR : when try to parse the following connection : '{}'",value))
+            Err(format!("ERROR : when try to parse the following shortcut : '{}'",value))
         }
     }
 
@@ -50,10 +49,6 @@ impl Connection {
 
     pub fn get_kind(&self) -> &String {
         &self.kind
-    }
-
-    pub fn get_mut_kind(&mut self) -> &mut String {
-        &mut self.kind
     }
 }
 
@@ -76,9 +71,5 @@ impl Configuration {
 
     pub fn get_kind(&self) -> &String {
         &self.kind
-    }
-
-    pub fn get_mut_kind(&mut self) -> &mut String {
-        &mut self.kind
     }
 }

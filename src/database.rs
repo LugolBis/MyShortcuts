@@ -22,23 +22,23 @@ pub struct Database;
 impl Database {
     pub fn init() -> Result<(), String> {
         let query = "
-        DROP TABLE IF EXISTS connections;
-        CREATE TABLE connections (name TEXT primary key, configuration TEXT, type TEXT);";
+        DROP TABLE IF EXISTS shortcuts;
+        CREATE TABLE shortcuts (name TEXT primary key, configuration TEXT, type TEXT);";
         Database::query_write(query)
     }
 
     pub fn query_write(query:&str) -> Result<(), String> {
-        let connection = sqlite::open(DB_NAME)
+        let shortcut = sqlite::open(DB_NAME)
             .map_err(|e| format!("{e}"))?;
-        connection.execute(query).map_err(|e| format!("{e}"))
+        shortcut.execute(query).map_err(|e| format!("{e}"))
     }
 
     pub fn query_read(query:&str) -> Result<String, String> {
         let mut result = String::new();
-        let connection = sqlite::open(DB_NAME)
+        let shortcut = sqlite::open(DB_NAME)
             .map_err(|e| format!("{e}"))?;
 
-        let mut cursor = connection.prepare(query).map_err(|e| format!("{e}"))?.into_iter();
+        let mut cursor = shortcut.prepare(query).map_err(|e| format!("{e}"))?.into_iter();
 
         while let Some(tuple) = cursor.try_next().map_err(|e| format!("{e}"))? {
             let mut line = String::new();
@@ -61,9 +61,24 @@ fn extract_value(value:Value) -> Result<String,String> {
     }
 }
 
+pub fn generate_new_name() -> String {
+    if let Ok(name) = Database::query_read("select name from shortcuts where name like 'Default%' order by name desc limit 1;") {
+        let name = name.replace("Default", "").replace(";\n","");
+        if let Ok(number) = name.parse::<u64>() {
+            format!("Default{}",number+1)
+        }
+        else {
+            String::from("Default0")
+        }
+    }
+    else {
+        String::from("Default0")
+    }
+}
+
 #[test]
 fn test_query_read() {
-    match Database::query_read("select * from connections;") {
+    match Database::query_read("select * from shortcuts;") {
         Ok(res) => println!("{}",res),
         Err(res) => println!("{}",res)
     }
