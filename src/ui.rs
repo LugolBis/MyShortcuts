@@ -6,15 +6,16 @@ use unicode_width::UnicodeWidthStr;
 use crate::objects::*;
 
 const ROW_BG: Color = Color::Black;
-const ROW_SELECTED: Color = Color::Rgb(198, 175, 102);
+const ROW_SELECTED: Color = Color::Rgb(227, 186, 143);
 const ROW_FONT: Color = Color::Rgb(227, 151, 143);
-const COLUMN_SELECTED: Color = Color::LightCyan;
+const COLUMN_SELECTED: Color = Color::Rgb(101, 175, 223); 
 const CELL_SELECTED: Color = Color::Rgb(155, 175, 223);
 const HEADER: Color = Color::Rgb(218, 93, 72);
 
-const ROW_WAS_SELECTED: Color = Color::Rgb(166, 146, 83);
-const COLUMN_WAS_SELECTED: Color = Color::Cyan;
+const ROW_WAS_SELECTED: Color = Color::Rgb(174, 134, 86);
+const COLUMN_WAS_SELECTED: Color = Color::Rgb(155, 175, 223);
 const CELL_WAS_SELECTED: Color = Color::Rgb(97, 122, 173);
+const CELL_EDITING: Color = Color::Rgb(151,192,80);
 
 #[derive(Debug)]
 pub struct WidgetConnections {
@@ -193,7 +194,7 @@ pub trait Common {
             State::Editing(ts, input) => {
                 selected_row_style = Style::default().add_modifier(Modifier::REVERSED).fg(ROW_WAS_SELECTED);
                 selected_col_style = Style::default().fg(COLUMN_WAS_SELECTED);
-                selected_cell_style = Style::default().add_modifier(Modifier::BOLD).fg(Color::Green);
+                selected_cell_style = Style::default().add_modifier(Modifier::BOLD).fg(CELL_EDITING);
                 rows = self.get_rows();
 
                 if let Some(index) = ts.selected() {
@@ -213,14 +214,15 @@ pub trait Common {
             }
         }
         
-        let block = Block::bordered().border_set(border::ROUNDED).title_top(Line::from(self.get_title()).centered());
+        let block = Block::bordered().border_set(border::ROUNDED).title_top(Line::from(self.get_title()).centered())
+            .title_style(Style::default().add_modifier(Modifier::BOLD).fg(HEADER));
         let t = Table::new(rows,[Constraint::Length(len_constraints.0 + 1),Constraint::Length(len_constraints.1 + 1)])
             .header(header)
             .row_highlight_style(selected_row_style)
             .column_highlight_style(selected_col_style)
             .cell_highlight_style(selected_cell_style)
             .highlight_symbol(Text::from(vec!["".into()," █ ".into()]))
-            .bg(Color::Black)
+            .bg(Color::Black).fg(ROW_FONT)
             .highlight_spacing(HighlightSpacing::Always)
             .block(block);
         match self.get_common_state() {

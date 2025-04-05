@@ -16,6 +16,98 @@ pub fn run_bash() {
     }
 }
 
+pub fn neo4j(vector: Vec<&String>) -> String {
+    let mut flags = Vec::new();
+    if let (Some(&host), Some(&port)) = (vector.get(0), vector.get(1)) {
+        if !host.is_empty() && !port.is_empty() {
+            flags.push(format!("-a neo4j://{}:{}", host, port));
+        }
+    }
+    for &(index, flag) in &[(2, "-u"), (3, "-p"), (4, "-d"), (5, "-f")] {
+        if let Some(&value) = vector.get(index) {
+            if !value.is_empty() {
+                flags.push(format!("{} {}", flag, value));
+            }
+        }
+    }
+    format!("cypher-shell {}", flags.join(" "))
+}
+
+pub fn postgresql(vector: Vec<&String>) -> String {
+    let mut command = Vec::new();
+
+    if let Some(password) = vector.get(3).filter(|s| !s.is_empty()) {
+        command.push(format!("export PGPASSWORD='{}' &&", password));
+    }
+    command.push("psql".to_string());
+
+    for &(index, flag) in &[(0, "-h"), (1, "-p"), (2, "-U"), (4, "-d"), (5, "-f")] {
+        if let Some(value) = vector.get(index).filter(|s| !s.is_empty()) {
+            command.push(format!("{} {}", flag, value));
+        }
+    }
+    command.join(" ")
+}
+
+pub fn mysql(vector: Vec<&String>) -> String {
+    let mut flags = Vec::new();
+
+    for &(index, flag) in &[(0, "-h"), (1, "-P"), (2, "-u")] {
+        if let Some(value) = vector.get(index).filter(|s| !s.is_empty()) {
+            flags.push(format!("{} {}", flag, value));
+        }
+    }
+    if let Some(value) = vector.get(3).filter(|s| !s.is_empty()) {
+        flags.push(format!("-p'{}'",value));
+    }
+    if let Some(value) = vector.get(5).filter(|s| !s.is_empty()) {
+        flags.push(format!("--protocol=socket -S {}",value))
+    }
+    if let Some(value) = vector.get(4).filter(|s| !s.is_empty()) {
+        flags.push(String::clone(value));
+    }
+    if let Some(value) = vector.get(6).filter(|s| !s.is_empty()) {
+        flags.push(format!("< {}",value));
+    }
+    format!("mysql {}",flags.join(" "))
+}
+
+pub fn mariadb(vector: Vec<&String>) -> String {
+    mysql(vector).replace("mysql", "mariadb")
+}
+
+pub fn sqlite(vector: Vec<&String>) -> String {
+    match (vector.get(0).filter(|s| !s.is_empty()), vector.get(1).filter(|s| !s.is_empty())) {
+        (Some(db_path), Some(script_path)) => format!("sqlite3 {} < {}",db_path,script_path),
+        (Some(db_path), None) => format!("sqlite3 {}",db_path),
+        _ => format!("echo 'Inconsistent SQLite arguments : {:?}'",vector)
+    }
+}
+
+pub fn oracle(vector: Vec<&String>) -> String {
+    let mut command = String::new();
+    match (vector.get(0).filter(|s| !s.is_empty()), vector.get(1).filter(|s| !s.is_empty())) {
+        (Some(host),Some(port)) => {
+            match (vector.get(2).filter(|s| !s.is_empty()), vector.get(3).filter(|s| !s.is_empty())) {
+                (Some(username),Some(password)) => {
+                    command.push_str(&format!("sqlplus {}/{}@{}:{}",username,password,host,port));
+                },
+                _ => { return format!("echo 'Inconsistent Oracle arguments : {:?}'",vector) }
+            }
+        },
+        _ => { return format!("echo 'Inconsistent Oracle arguments : {:?}'",vector) }
+    }
+
+    if let Some(database) = vector.get(4).filter(|s| !s.is_empty()) {
+        command.push_str(&format!("/{}",database));
+    }
+    if let Some(script_path) = vector.get(5).filter(|s| !s.is_empty()) {
+        command = command.replace("sqlplus","echo exit | sqlplus -s ");
+        command.push_str(&format!(" @{}",script_path));
+    }
+    command
+}
+
 #[macro_use]
 pub mod macros {
     /// This macro take in argument a vector of String and format them into<br>
@@ -51,30 +143,6 @@ pub mod macros {
             $text.split($pattern).filter(|e| !e.is_empty() && e!=&"\n").map(String::from).collect::<Vec<String>>()
         };
     }
-
-    /// This macro generate a bash command to connect to neo4j<br>
-    /// from a vector of String or &str
-    #[macro_export]
-    macro_rules! neo4j {
-        ($vector: expr) => {
-            if $vector.len() == 4 {format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}'",$vector[0],$vector[1],$vector[2],$vector[3])}
-            else if $vector.len() == 5 {format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}' -d {}",$vector[0],$vector[1],$vector[2],$vector[3],$vector[4])}
-            else if $vector.len() == 6 {format!("cypher-shell -a neo4j://{}:{} -u {} -p '{}' -d {} -f {}",$vector[0],$vector[1],$vector[2],$vector[3],$vector[4],$vector[5])}
-            else { format!("echo 'Inconsistent connection configuration {:?}'",$vector) }
-        };
-    }
-
-    /// This macro generate a bash command to connect to neo4j<br>
-    /// from a vector of String or &str
-    #[macro_export]
-    macro_rules! postgresql {
-        ($vector: expr) => {
-            if $vector.len() == 4 {format!("export PGPASSWORD='{}' && psql -U {} -h {} -p {}",$vector[3],$vector[2],$vector[0],$vector[1])}
-            else if $vector.len() == 5 {format!("export PGPASSWORD='{}' && psql -U {} -h {} -p {} -d {}",$vector[3],$vector[2],$vector[0],$vector[1],$vector[4])}
-            else if $vector.len() == 6 {format!("export PGPASSWORD='{}' && psql -U {} -h {} -p {} -d {} -f {}",$vector[3],$vector[2],$vector[0],$vector[1],$vector[4],$vector[5])}
-            else { format!("echo 'Inconsistent connection configuration {:?}'",$vector) }
-        };
-    }
 }
 
 #[test]
@@ -84,6 +152,4 @@ fn test_macro() {
     assert_eq!(format_config!(vec![Configuration::default()]),String::from("echo Welcome on MyShortcuts;"));
     assert_eq!(filter_config!(vec![String::from("lulu"),String::new(),String::from("tutu"),String::new(),String::new()]),vec![String::from("lulu"),String::new(),String::from("tutu")]);
     assert_eq!(result_vec!("tutu;lulu;",";"), vec![String::from("tutu"),String::from("lulu")]);
-    assert_eq!(neo4j!(vec!["localhost","7687","userA","password"]),String::from("cypher-shell -a neo4j://localhost:7687 -u userA -p 'password'"));
-    assert_eq!(neo4j!(vec!["localhost","7687","userA","password","my_db"]),String::from("cypher-shell -a neo4j://localhost:7687 -u userA -p 'password' -d my_db"));
 }

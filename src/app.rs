@@ -5,9 +5,9 @@ use std::io::Write;
 use crate::ui::{WidgetConfigurations,WidgetConnections,Common};
 
 use crate::objects::*;
-use crate::database::{Database,CLASSIC_SHEME,CUSTOM_SHEME,AVAILABLE_SHEME};
-use crate::utils::run_bash;
-use crate::{neo4j, format_config, filter_config, postgresql};
+use crate::database::{Database, AVAILABLE_SHEME, CLASSIC_SHEME, CUSTOM_SHEME, FILE_SCHEME, SOCKET_SCHEME};
+use crate::utils::*;
+use crate::{format_config, filter_config};
 
 use ratatui::{
     widgets::{TableState,Clear,Block,Paragraph},layout::Flex,prelude::{Constraint, Layout, Direction, Rect},
@@ -262,18 +262,8 @@ impl App {
                     if let Ok(mut configurations) = Database::query_read(
                         &format!("select configuration from connections where name='{}';",connection.get_name()))
                     {
-                        let new_configurations: Vec<Configuration>;
-                        if *&["Neo4j","PostgreSQL"].contains(&connection.get_kind().as_str()) {
-                            let configurations = configurations.split(";").map(|c| c).collect::<Vec<&str>>();
-                            new_configurations = CLASSIC_SHEME.iter().enumerate()
-                            .map(|(index,kind)|
-                                if let Some(value) = configurations.get(index) {Configuration::from(value, *kind)}
-                                else {Configuration::from("",*kind)}).collect();
-                        }
-                        else {
-                            configurations.pop(); configurations.pop(); configurations.pop();
-                            new_configurations = vec![Configuration::from(&configurations, CUSTOM_SHEME[0])];
-                        }
+                        let configurations = configurations.split(";").map(|c| c).collect::<Vec<&str>>();
+                        let new_configurations = get_current_config(configurations, connection.get_kind());
                         self.configurations.set_values(new_configurations);
                     }
                 }
@@ -334,12 +324,24 @@ impl App {
 
     fn execute_shortcut(&self, kind:&String) {
         if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open("current_command.txt") {
-            let mut command: String;
-            if kind == "Neo4j" {
-                command = neo4j!(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
+            let command: String;
+            if kind == "Oracle" {
+                command = oracle(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()))
+            }
+            else if kind == "MySQL" {
+                command = mysql(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()))
+            }
+            else if kind == "MariaDB" {
+                command = mariadb(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()))
             }
             else if kind == "PostgreSQL" {
-                command = postgresql!(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
+                command = postgresql(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
+            }
+            else if kind == "SQLite" {
+                command = sqlite(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
+            }
+            else if kind == "Neo4j" {
+                command = neo4j(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
             }
             else if kind == "Custom" {
                 command = String::clone(self.configurations.get_values()[0].get_value());
@@ -347,6 +349,7 @@ impl App {
             else {
                 command = String::from("echo 'Welcome on MyShortcuts !'");
             }
+
             if let Ok(_) = file.write_all(command.as_bytes()) {
                 let _ = run_bash();
             }
@@ -358,8 +361,12 @@ impl App {
         let total_connections = self.connections.get_values().len();
         let query: String;
         match kind {
-            "Neo4j" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','Neo4j')",total_connections),
+            "Oracle" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','Oracle')",total_connections),
+            "MySQL" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','MySQL')",total_connections),
+            "MariaDB" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','MariaDB')",total_connections),
             "PostgreSQL" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','PostgreSQL')",total_connections),
+            "SQLite" => query = format!("insert into connections values ('Default{}','Required;','SQLite')",total_connections),
+            "Neo4j" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','Neo4j')",total_connections),
             "Custom" => query = format!("insert into connections values ('Default{}','echo Welcome on MyShortcuts','Custom')",total_connections),
             _ => query = String::new()
         }
@@ -385,4 +392,18 @@ fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
     let [area] = vertical.areas(area);
     let [area] = horizontal.areas(area);
     area
+}
+
+fn get_current_config(configurations: Vec<&str>, kind: &str) -> Vec<Configuration> {
+    let scheme: Vec<&str>;
+    match kind {
+        "MySQL" | "MariaDB" => { scheme = SOCKET_SCHEME.to_vec(); },
+        "Oracle" | "PostgreSQL" | "Neo4j" => { scheme = CLASSIC_SHEME.to_vec(); }
+        "SQLite" => { scheme = FILE_SCHEME.to_vec(); }
+        "Custom" => { scheme = CUSTOM_SHEME.to_vec(); },
+        _ => { scheme = vec!["Unknow"] }
+    }
+    scheme.iter().enumerate().map(|(index,kind)|
+        if let Some(value) = configurations.get(index) {Configuration::from(value, *kind)}
+        else {Configuration::from("",*kind)}).collect()
 }
