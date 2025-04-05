@@ -1,9 +1,10 @@
 use ratatui::{
-    prelude::Constraint, buffer::Buffer, crossterm::event::KeyCode, layout::Rect, style::{Color, Stylize, Style,Modifier},Frame,
-    symbols::border, text::{Line, Span, Text}, widgets::{Block, Paragraph, Widget, Cell, Row, Table, TableState,HighlightSpacing}
+    prelude::{Constraint,Layout}, layout::Flex, layout::Rect, style::{Color, Stylize, Style,Modifier},Frame,
+    symbols::border, text::{Line, Text}, widgets::{Block, Paragraph, Clear, Cell, Row, Table,HighlightSpacing}
 };
 use unicode_width::UnicodeWidthStr;
 use crate::objects::*;
+use crate::database::AVAILABLE_SHEME;
 
 const ROW_BG: Color = Color::Black;
 const ROW_SELECTED: Color = Color::Rgb(227, 186, 143);
@@ -102,7 +103,7 @@ impl Common for WidgetConnections {
     }
 
     fn get_rows(&self) -> Vec<ratatui::widgets::Row<'_>> {
-        self.values.iter().enumerate().map(|(i, connection)| {
+        self.values.iter().map(|connection| {
             let item = [connection.get_kind(), connection.get_name()];
             item.into_iter()
                 .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
@@ -137,7 +138,7 @@ impl Common for WidgetConfigurations {
     }
 
     fn get_rows(&self) -> Vec<Row<'_>> {
-        self.values.iter().enumerate().map(|(i, configuration)| {
+        self.values.iter().map(|configuration| {
             let item = [configuration.get_kind(), configuration.get_value()];
             item.into_iter()
                 .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
@@ -176,7 +177,7 @@ pub trait Common {
         let selected_cell_style: Style;
 
         let mut rows: Vec<ratatui::widgets::Row<'_>>;
-        let mut len_constraints = self.constraint_len_calculator();
+        let len_constraints = self.constraint_len_calculator();
 
         match self.get_common_state() {
             State::Selected(_) => {
@@ -193,7 +194,7 @@ pub trait Common {
             },
             State::Editing(ts, input) => {
                 selected_row_style = Style::default().add_modifier(Modifier::REVERSED).fg(ROW_WAS_SELECTED);
-                selected_col_style = Style::default().fg(COLUMN_WAS_SELECTED);
+                selected_col_style = Style::default().fg(COLUMN_SELECTED);
                 selected_cell_style = Style::default().add_modifier(Modifier::BOLD).fg(CELL_EDITING);
                 rows = self.get_rows();
 
@@ -237,4 +238,27 @@ fn calculate_cursor_position(area:Rect, cursor:u16, left_constraint: u16, index:
     let index = if index>11 {11 as u16} else {index as u16};
     let y = area.y + 2u16 * (index+1) + 2u16 * (index) + 2u16;
     (x,y)
+}
+
+pub fn render_pop_up(frame: &mut Frame, index:usize) {
+    let mut lines = AVAILABLE_SHEME.iter().map(|kind| 
+        Line::from(format!("\n{}\n",*kind)).style(Style::default().fg(ROW_FONT)))
+        .collect::<Vec<Line>>();
+    lines[index] = Line::clone(&lines[index]).patch_style(COLUMN_SELECTED);
+    let content = Text::from(lines);
+    let block = Block::bordered().border_set(border::ROUNDED).title(Line::from(" Select a kind of Shortcut " ).centered())
+        .title_style(Style::default().add_modifier(Modifier::BOLD).fg(HEADER))
+        .style(Style::default().fg(ROW_FONT));
+    let area = popup_area(frame.area(), 50, 50);
+    let paragraph = Paragraph::new(content).centered().block(block);
+    frame.render_widget(Clear, area);
+    frame.render_widget(paragraph, area);
+}
+
+fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
+    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
+    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
+    let [area] = vertical.areas(area);
+    let [area] = horizontal.areas(area);
+    area
 }

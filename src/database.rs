@@ -8,10 +8,14 @@ pub const CLASSIC_SHEME: [&str;6] = ["Host","Port","Username","Password","Databa
 pub const SOCKET_SCHEME: [&str;7] = ["Host","Port","Username","Password","Database","Socket Path","Script Path"];
 /// Used for the following dtabases : SQLite
 pub const FILE_SCHEME: [&str;2] = ["Database Path","Script Path"];
+/// Used for MongoDB only
+pub const MONGODB_SCHEME: [&str;6] = ["Host","Port","Username","Password","Auth Database","Script Path"];
+/// Used for Redis only
+pub const REDIS_SCHEME:[&str;6] = ["Host","Port","Username","Password","Database Number","Script Path"];
 /// Used for the shell command
 pub const CUSTOM_SHEME: [&str;1] = ["Shell Command"];
 /// Used to choose what kind of shortcut you need.
-pub const AVAILABLE_SHEME: [&str;7] = ["Oracle","MySQL","MariaDB","PostgreSQL","SQLite","Neo4j","Custom"];
+pub const AVAILABLE_SHEME: [&str;9] = ["Oracle","MySQL","MariaDB","PostgreSQL","SQLite","Redis","MongoDB","Neo4j","Custom"];
 
 pub struct Database;
 

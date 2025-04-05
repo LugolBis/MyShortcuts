@@ -108,6 +108,26 @@ pub fn oracle(vector: Vec<&String>) -> String {
     command
 }
 
+pub fn mongodb(vector: Vec<&String>) -> String {
+    let mut flags = Vec::new();
+    for &(index, flag) in &[(0, "--host"),(1, "--port"),(2, "-u"),(3, "-p"),(4,"--authenticationDatabase"),(5,"-f")] {
+        if let Some(value) = vector.get(index).filter(|s| !s.is_empty()) {
+            flags.push(format!("{} {}", flag, value));
+        }
+    }
+    format!("mongosh {}", flags.join(" "))
+}
+
+pub fn redis(vector: Vec<&String>) -> String {
+    let mut flags = Vec::new();
+    for &(index, flag) in &[(0, "-h"),(1, "-p"),(2, "--user"),(3, "-a"),(4,"-n"),(5,"--eval")] {
+        if let Some(value) = vector.get(index).filter(|s| !s.is_empty()) {
+            flags.push(format!("{} {}", flag, value));
+        }
+    }
+    format!("redis-cli {}", flags.join(" "))
+}
+
 #[macro_use]
 pub mod macros {
     /// This macro take in argument a vector of String and format them into<br>

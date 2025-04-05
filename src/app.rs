@@ -2,17 +2,16 @@ use std::io;
 use std::fs::OpenOptions;
 use std::io::Write;
 
-use crate::ui::{WidgetConfigurations,WidgetConnections,Common};
+use crate::ui::{WidgetConfigurations,WidgetConnections,Common,render_pop_up};
 
 use crate::objects::*;
-use crate::database::{Database, AVAILABLE_SHEME, CLASSIC_SHEME, CUSTOM_SHEME, FILE_SCHEME, SOCKET_SCHEME};
+use crate::database::{Database, AVAILABLE_SHEME, CLASSIC_SHEME, CUSTOM_SHEME, FILE_SCHEME, MONGODB_SCHEME, REDIS_SCHEME, SOCKET_SCHEME};
 use crate::utils::*;
 use crate::{format_config, filter_config};
 
 use ratatui::{
-    widgets::{TableState,Clear,Block,Paragraph},layout::Flex,prelude::{Constraint, Layout, Direction, Rect},
-    DefaultTerminal, Frame,crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind},text::{Line,Text},
-    style::Color
+    widgets::TableState,prelude::{Constraint, Layout, Direction},
+    DefaultTerminal, Frame,crossterm::event::{self, Event, KeyCode, KeyEvent, KeyEventKind}
 };
 use tui_input::backend::crossterm::EventHandler;
 use tui_input::Input;
@@ -64,14 +63,7 @@ impl App {
         self.configurations.render(frame, layout[1]);
 
         if self.show_pop_up.0 {
-            let mut lines = AVAILABLE_SHEME.iter().map(|kind| Line::from(*kind)).collect::<Vec<Line>>();
-            lines[self.show_pop_up.1] = Line::clone(&lines[self.show_pop_up.1]).patch_style(Color::LightCyan);
-            let content = Text::from(lines);
-            let block = Block::bordered().title(Line::from(" Select a kind of Shortcut " ).centered());
-            let area = popup_area(frame.area(), 50, 50);
-            let paragraph = Paragraph::new(content).centered().block(block);
-            frame.render_widget(Clear, area);
-            frame.render_widget(paragraph, area);
+            render_pop_up(frame, self.show_pop_up.1);
         }
     }
 
@@ -259,7 +251,7 @@ impl App {
             },
             (State::Selected(ts) | State::WasSelected(ts), State::Selected(_) | State::WasSelected(_)) => {
                 if let Some(connection) = self.connections.get_values().get(ts.selected().unwrap_or(0)) {
-                    if let Ok(mut configurations) = Database::query_read(
+                    if let Ok(configurations) = Database::query_read(
                         &format!("select configuration from connections where name='{}';",connection.get_name()))
                     {
                         let configurations = configurations.split(";").map(|c| c).collect::<Vec<&str>>();
@@ -340,6 +332,12 @@ impl App {
             else if kind == "SQLite" {
                 command = sqlite(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
             }
+            else if kind == "Redis" {
+                command = redis(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
+            }
+            else if kind == "MongoDB" {
+                command = mongodb(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
+            }
             else if kind == "Neo4j" {
                 command = neo4j(filter_config!(self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>()));
             }
@@ -366,6 +364,8 @@ impl App {
             "MariaDB" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','MariaDB')",total_connections),
             "PostgreSQL" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','PostgreSQL')",total_connections),
             "SQLite" => query = format!("insert into connections values ('Default{}','Required;','SQLite')",total_connections),
+            "Redis" => query = format!("insert into connections values ('Default{}','Required;Required','Redis')",total_connections),
+            "MongoDB" => query = format!("insert into connections values ('Default{}','Required;Required','Redis')",total_connections),
             "Neo4j" => query = format!("insert into connections values ('Default{}','Required;Required;Required;Required','Neo4j')",total_connections),
             "Custom" => query = format!("insert into connections values ('Default{}','echo Welcome on MyShortcuts','Custom')",total_connections),
             _ => query = String::new()
@@ -386,20 +386,14 @@ impl App {
     }
 }
 
-fn popup_area(area: Rect, percent_x: u16, percent_y: u16) -> Rect {
-    let vertical = Layout::vertical([Constraint::Percentage(percent_y)]).flex(Flex::Center);
-    let horizontal = Layout::horizontal([Constraint::Percentage(percent_x)]).flex(Flex::Center);
-    let [area] = vertical.areas(area);
-    let [area] = horizontal.areas(area);
-    area
-}
-
 fn get_current_config(configurations: Vec<&str>, kind: &str) -> Vec<Configuration> {
     let scheme: Vec<&str>;
     match kind {
         "MySQL" | "MariaDB" => { scheme = SOCKET_SCHEME.to_vec(); },
-        "Oracle" | "PostgreSQL" | "Neo4j" => { scheme = CLASSIC_SHEME.to_vec(); }
-        "SQLite" => { scheme = FILE_SCHEME.to_vec(); }
+        "Oracle" | "PostgreSQL" | "Neo4j" => { scheme = CLASSIC_SHEME.to_vec(); },
+        "SQLite" => { scheme = FILE_SCHEME.to_vec(); },
+        "Redis" => { scheme = REDIS_SCHEME.to_vec(); },
+        "MongoDB" => { scheme = MONGODB_SCHEME.to_vec(); },
         "Custom" => { scheme = CUSTOM_SHEME.to_vec(); },
         _ => { scheme = vec!["Unknow"] }
     }
