@@ -1,13 +1,10 @@
-SCRIPT_PATH = "$(PWD)/main.sh"
+SCRIPT_PATH = "$(PWD)/shell_script/main.sh"
 
-"": config run
+"": config
 
 config:
-	@chmod +x main.sh
+	@chmod +x $(SCRIPT_PATH)
 	@echo "" > current_command.txt
-
-run:
-	x-terminal-emulator -e $(SCRIPT_PATH) "$(PWD)/current_command.txt"
 
 clear:
 	@echo "" > current_command.txt
