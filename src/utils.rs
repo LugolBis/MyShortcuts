@@ -1,14 +1,89 @@
 use std::process::Command;
+use std::fs::OpenOptions;
+use std::io::{Read,Write};
 use std::env;
 use std::thread;
 
-pub fn run_bash() {
+pub fn run_command() {
+    if let Ok(current_dir) = env::current_dir() {
+        let path = format!("{}/shell_script/config.txt",current_dir.display());
+        if let Ok(mut file) = OpenOptions::new().read(true).open(path) {
+            let mut config = String::new();
+            if let Ok(_) = file.read_to_string(&mut config) {
+                map_config(config);
+            }
+        }
+    }
+}
+
+fn map_config(config: String) {
+    let config = config.split("\n").collect::<Vec<&str>>();
+    match (config.get(0),config.get(1)) {
+        (Some(terminal),Some(os)) => {
+            let terminal = String::from(*terminal);
+            match *os {
+                "windows" => {
+                    run_windows(terminal);
+                },
+                "macos" => {
+                    run_macos(terminal);
+                },
+                "linux" => {
+                    run_linux(terminal);
+                }
+                _ => {}
+            }
+        },
+        _ => {}
+    }
+    
+}
+
+fn run_windows(terminal: String) {
+    if let Ok(current_dir) = env::current_dir() {
+        let path = format!("{}/shell_script/current_command.txt",current_dir.display());
+        if let Ok(mut file) = OpenOptions::new().write(true).read(true).open(path) {
+            let mut config = String::new();
+            if let Ok(_) = file.read_to_string(&mut config) {
+                let config = config.replace(" && "," ; ");
+                let _ = file.write_all(config.as_bytes());
+            }
+        }
+
+        todo!("Implement main.ps1");
+        thread::spawn(move || {
+            let mut child = Command::new(terminal)
+                .arg("-e")
+                .arg(format!("{}/shell_script/main.ps1",current_dir.display()))
+                .arg(format!("{}/shell_script/current_command.txt",current_dir.display()))
+                .spawn()
+                .expect("ERROR when try to launch.");
+            let _ = child.wait().expect("ERROR when try to wait the result.");
+        });
+    }
+}
+
+fn run_macos(terminal: String) {
     if let Ok(current_dir) = env::current_dir() {
         thread::spawn(move || {
-            let mut child = Command::new("x-terminal-emulator")
+            let mut child = Command::new(terminal)
                 .arg("-e")
-                .arg(format!("{}/main.sh",current_dir.display()))
-                .arg(format!("{}/current_command.txt",current_dir.display()))
+                .arg(format!("{}/shell_script/main.sh",current_dir.display()))
+                .arg(format!("{}/shell_script/current_command.txt",current_dir.display()))
+                .spawn()
+                .expect("ERROR when try to launch.");
+            let _ = child.wait().expect("ERROR when try to wait the result.");
+        });
+    }
+}
+
+fn run_linux(terminal: String) {
+    if let Ok(current_dir) = env::current_dir() {
+        thread::spawn(move || {
+            let mut child = Command::new(terminal)
+                .arg("-e")
+                .arg(format!("{}/shell_script/main.sh",current_dir.display()))
+                .arg(format!("{}/shell_script/current_command.txt",current_dir.display()))
                 .spawn()
                 .expect("ERROR when try to launch.");
             let _ = child.wait().expect("ERROR when try to wait the result.");

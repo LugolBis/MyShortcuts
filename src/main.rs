@@ -3,15 +3,22 @@ mod utils;
 mod objects;
 mod ui;
 mod app;
+mod configuration;
 
 use database::Database;
 use app::main_app;
+use configuration::configure;
 use std::fs;
 
 fn main() {
     unsafe {
         std::env::set_var("RUST_BACKTRACE", "1");
     }
+
+    if !fs::exists("/shell_script/config.txt").unwrap_or(false) {
+        configure()
+    }
+
     if !fs::exists("my_shortcuts.db").unwrap_or(false) {
         if let Err(error) = Database::init() {
             panic!("{error}")
@@ -30,14 +37,6 @@ fn main() {
         Ok(_) => {},
         Err(error) => println!("ERROR with the function mainApp :\n{error}")
     }
-}
-
-#[test]
-fn test_bash() {
-    use utils::*;
-    println!("Start");
-    run_bash();
-    println!("END");
 }
 
 #[test]

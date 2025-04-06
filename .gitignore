@@ -1,4 +1,3 @@
 /target
-current_command.txt
-logs.txt
+*.txt
 my_shortcuts.db
