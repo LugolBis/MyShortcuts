@@ -22,12 +22,8 @@ pub fn configure() {
             config.push_str(&format!("Not Supported OS : {}",unknow));
         }
     }
-
-    if let Ok(current_dir) = env::current_dir() {
-        let path = format!("{}/shell_script/config.txt",current_dir.display());
-        if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open(path) {
-            let _ = file.write_all(config.as_bytes());
-        }
+    if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open("config.txt") {
+        let _ = file.write_all(config.as_bytes());
     }
 }
 

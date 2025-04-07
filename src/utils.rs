@@ -1,17 +1,24 @@
 use std::process::Command;
 use std::fs::OpenOptions;
-use std::io::{Read,Write};
+use std::io::{Read, Write};
 use std::env;
 use std::thread;
 
+pub struct Logs;
+
+impl Logs {
+    pub fn write(content: String) {
+        if let Ok(mut file) = OpenOptions::new().write(true).create(true).open("log.txt") {
+            let _ = file.write(content.as_bytes());
+        }
+    }
+}
+
 pub fn run_command() {
-    if let Ok(current_dir) = env::current_dir() {
-        let path = format!("{}/shell_script/config.txt",current_dir.display());
-        if let Ok(mut file) = OpenOptions::new().read(true).open(path) {
-            let mut config = String::new();
-            if let Ok(_) = file.read_to_string(&mut config) {
-                map_config(config);
-            }
+    if let Ok(mut file) = OpenOptions::new().read(true).open("config.txt") {
+        let mut config = String::new();
+        if let Ok(_) = file.read_to_string(&mut config) {
+            map_config(config);
         }
     }
 }
@@ -41,7 +48,7 @@ fn map_config(config: String) {
 
 fn run_windows(terminal: String) {
     if let Ok(current_dir) = env::current_dir() {
-        let path = format!("{}/shell_script/current_command.txt",current_dir.display());
+        let path = format!("{}/current_command.txt",current_dir.display());
         if let Ok(mut file) = OpenOptions::new().write(true).read(true).open(path) {
             let mut config = String::new();
             if let Ok(_) = file.read_to_string(&mut config) {
@@ -50,15 +57,15 @@ fn run_windows(terminal: String) {
             }
         }
 
-        todo!("Implement main.ps1");
         thread::spawn(move || {
             let mut child = Command::new(terminal)
                 .arg("-e")
-                .arg(format!("{}/shell_script/main.ps1",current_dir.display()))
-                .arg(format!("{}/shell_script/current_command.txt",current_dir.display()))
+                .arg(format!("{}/main.ps1",current_dir.display()))
                 .spawn()
                 .expect("ERROR when try to launch.");
-            let _ = child.wait().expect("ERROR when try to wait the result.");
+            if let Err(error) = child.wait() {
+                Logs::write(format!("\nutils.rs : run_windows() :\n{}",error));
+            }
         });
     }
 }
@@ -68,11 +75,13 @@ fn run_macos(terminal: String) {
         thread::spawn(move || {
             let mut child = Command::new(terminal)
                 .arg("-e")
-                .arg(format!("{}/shell_script/main.sh",current_dir.display()))
-                .arg(format!("{}/shell_script/current_command.txt",current_dir.display()))
+                .arg(format!("{}/main.sh",current_dir.display()))
+                .arg(format!("{}/current_command.txt",current_dir.display()))
                 .spawn()
                 .expect("ERROR when try to launch.");
-            let _ = child.wait().expect("ERROR when try to wait the result.");
+            if let Err(error) = child.wait() {
+                Logs::write(format!("\nutils.rs : run_macos() :\n{}",error));
+            }
         });
     }
 }
@@ -82,11 +91,13 @@ fn run_linux(terminal: String) {
         thread::spawn(move || {
             let mut child = Command::new(terminal)
                 .arg("-e")
-                .arg(format!("{}/shell_script/main.sh",current_dir.display()))
-                .arg(format!("{}/shell_script/current_command.txt",current_dir.display()))
+                .arg(format!("{}/main.sh",current_dir.display()))
+                .arg(format!("{}/current_command.txt",current_dir.display()))
                 .spawn()
                 .expect("ERROR when try to launch.");
-            let _ = child.wait().expect("ERROR when try to wait the result.");
+            if let Err(error) = child.wait() {
+                Logs::write(format!("\nutils.rs : run_linux() line 99 :\n{}",error));
+            }
         });
     }
 }

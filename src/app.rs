@@ -1,6 +1,5 @@
 use std::fs::OpenOptions;
 use std::io::{self,Write};
-use std::env;
 
 use crate::ui::{WidgetConfigurations,WidgetShortcuts,Common,render_pop_up,render_help};
 use crate::objects::*;
@@ -328,13 +327,7 @@ impl App {
     }
 
     fn execute_shortcut(&self, kind:&String) {
-        let path: String;
-        if let Ok(current_dir) = env::current_dir() {
-            path = format!("{}/shell_script/current_command.txt",current_dir.display());
-        }
-        else { path = String::new() }
-
-        if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open(path) {
+        if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open("current_command.txt") {
             let command: String;
             let current_configuration = self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>();
             if kind == "Oracle" {

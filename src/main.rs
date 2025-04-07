@@ -15,7 +15,7 @@ fn main() {
         std::env::set_var("RUST_BACKTRACE", "1");
     }
 
-    if !fs::exists("/shell_script/config.txt").unwrap_or(false) {
+    if !fs::exists("config.txt").unwrap_or(false) {
         configure()
     }
 

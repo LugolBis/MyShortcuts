@@ -11,9 +11,32 @@ The tool offers the following features :
 <br>
 
 ## Getting started
+### Linux
 Clone the repository :
 ```BashScript
 $ git clone https://github.com/LugolBis/MyShortcuts.git
+```
+Configure the permissions :
+```BashScript
+$ make config_bash
+```
+Build the project :
+```BashScript
+$ cd etc/MyShortcuts && cargo build
+```
+Launch it :
+```BashScript
+$ cargo run
+```
+
+### Windows
+Clone the repository :
+```BashScript
+$ git clone https://github.com/LugolBis/MyShortcuts.git
+```
+Configure the permissions :
+```BashScript
+$ # Not already supported.
 ```
 Build the project :
 ```BashScript
