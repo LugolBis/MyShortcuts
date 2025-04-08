@@ -87,12 +87,13 @@ fn run_macos(terminal: String) {
 }
 
 fn run_linux(terminal: String) {
-    if let Ok(current_dir) = env::current_dir() {
+    if let Ok(mut file) = OpenOptions::new().read(true).open("current_command.txt") {
+        let mut command = String::new();
+        let _ = file.read_to_string(&mut command);
         thread::spawn(move || {
             let mut child = Command::new(terminal)
                 .arg("-e")
-                .arg(format!("{}/main.sh",current_dir.display()))
-                .arg(format!("{}/current_command.txt",current_dir.display()))
+                .arg(format!("{}; exec bash",command))
                 .spawn()
                 .expect("ERROR when try to launch.");
             if let Err(error) = child.wait() {

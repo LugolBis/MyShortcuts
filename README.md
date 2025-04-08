@@ -16,10 +16,6 @@ Clone the repository :
 ```BashScript
 $ git clone https://github.com/LugolBis/MyShortcuts.git
 ```
-Configure the permissions :
-```BashScript
-$ make config_bash
-```
 Build the project :
 ```BashScript
 $ cd etc/MyShortcuts && cargo build
