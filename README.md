@@ -16,32 +16,17 @@ Clone the repository :
 ```BashScript
 $ git clone https://github.com/LugolBis/MyShortcuts.git
 ```
-Build the project :
+Configure the project :
 ```BashScript
-$ cd etc/MyShortcuts && cargo build
+$ cd etc/MyShortcuts && make
 ```
 Launch it :
 ```BashScript
-$ cargo run
+$ myshortcuts
 ```
 
 ### Windows
-Clone the repository :
-```BashScript
-$ git clone https://github.com/LugolBis/MyShortcuts.git
-```
-Configure the permissions :
-```BashScript
-$ # Not already supported.
-```
-Build the project :
-```BashScript
-$ cd etc/MyShortcuts && cargo build
-```
-Launch it :
-```BashScript
-$ cargo run
-```
+- 🏗️ Not already supported.
 
 ## Available Scheme
 **MyShortcuts** integrate predefined schemes for the databases connection. These schemes help you to adding and editing a new database connection by provide you the configuration needed by any of them.
@@ -67,10 +52,16 @@ Moreover these schemes are used to format your configuration and generate a shel
 > Database connection schemes allow you to specify a script path to run in the database (this option runs your script in your database and does not persist the connection).
 
 ## Compatibility
-|Shell|Supported|
-|:-:|:-:|
-|BashScript|✅​|
-|PowerShell|🕑​|
+|OS|Shell|Supported|Requirements|
+|:-:|:-:|:-:|:-:|
+|Linux/macOS|BashScript|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#requirements)|
+|Windows|PowerShell|🏗️​||
+
+## Requirements
+### Linux/macOS :
+#### BashScript :
+- [Tmux](https://github.com/tmux/tmux)
+- Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
 
 ## Privacy
 **MyShortcuts** save your data locally with SQLite, don't worry about saving your passwords !
