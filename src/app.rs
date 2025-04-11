@@ -16,7 +16,8 @@ use tui_input::Input;
 
 pub fn main_app() -> io::Result<()> {
     let mut terminal = ratatui::init();
-    let app_result = App::new().run(&mut terminal);
+    let mut app = App::new();
+    let app_result = app.run(&mut terminal);
     ratatui::restore();
     app_result
 }
@@ -38,7 +39,7 @@ impl App {
             configurations: WidgetConfigurations::from(vec![],State::WasSelected(TableState::new().with_selected(0))),
             save: String::new(),
             show_pop_up: (false,0usize),
-            exit: false
+            exit: false,
         }
     }
 
@@ -151,16 +152,16 @@ impl App {
                     self.configurations.set_state(State::Selected(ts1))
                 }
             },
-            (State::Selected(ts0)|State::WasSelected(ts0),State::WasSelected(_)|State::Selected(_), KeyCode::Char('o')) => {
+            (State::Selected(ts0)|State::WasSelected(ts0),State::WasSelected(_)|State::Selected(_), KeyCode::Char('o')|KeyCode::Char('O')) => {
                 if let Some(shortcut) = self.shortcuts.get_values().get(ts0.selected().unwrap_or(0)) {
-                    self.execute_shortcut(shortcut.get_kind());
+                    self.execute_shortcut(String::clone(shortcut.get_kind()));
                 }
             }
-            (State::Selected(index),State::WasSelected(_), KeyCode::Char('a')) => {
+            (State::Selected(index),State::WasSelected(_), KeyCode::Char('a')|KeyCode::Char('A')) => {
                 self.shortcuts.set_state(State::WasSelected(index));
                 self.show_pop_up = (true,0);
             },
-            (State::WasSelected(_),State::Selected(index), KeyCode::Char('a')) => {
+            (State::WasSelected(_),State::Selected(index), KeyCode::Char('a')|KeyCode::Char('A')) => {
                 self.configurations.set_state(State::WasSelected(index));
                 self.show_pop_up = (true,0);
             },
@@ -174,14 +175,14 @@ impl App {
                 self.show_pop_up = (false,0);
                 self.shortcuts.set_state(State::Selected(index));
             }
-            (State::Selected(index),State::WasSelected(_),KeyCode::Char('r')) => {
+            (State::Selected(index),State::WasSelected(_),KeyCode::Char('r')|KeyCode::Char('R')) => {
                 if let Some(index) = index.selected() {
                     if let Some(shortcut) = self.shortcuts.get_values().get(index) {
                         let _ = Database::query_write(&format!("delete from shortcuts where name='{}';", shortcut.get_name()));
                     }
                 }
             },
-            (State::WasSelected(ts0),State::Selected(ts1),KeyCode::Char('r')) => {
+            (State::WasSelected(ts0),State::Selected(ts1),KeyCode::Char('r')|KeyCode::Char('R')) => {
                 if let Some(index0) = ts0.selected() {
                     if let Some(index1) = ts1.selected() {
                         self.configurations.get_mut_values()[index1] = Configuration::from("","");
@@ -191,11 +192,11 @@ impl App {
                     }
                 }
             },
-            (State::WasSelected(index), State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => {
+            (State::WasSelected(index), State::WasSelected(_), KeyCode::Char('q') |KeyCode::Char('Q') | KeyCode::Esc) => {
                 self.show_pop_up = (false,0);
                 self.shortcuts.set_state(State::Selected(index));
             },
-            (State::Selected(mut ts0), State::WasSelected(_), KeyCode::Char('e')) => {
+            (State::Selected(mut ts0), State::WasSelected(_), KeyCode::Char('e')|KeyCode::Char('E')) => {
                 if let Some(index) = ts0.selected() {
                     if let Some(shortcut) =  self.shortcuts.get_values().get(index) {
                         self.save = String::clone(shortcut.get_name());
@@ -204,7 +205,7 @@ impl App {
                     }
                 }
             },
-            (State::WasSelected(ts0), State::Selected(mut ts1), KeyCode::Char('e')) => {
+            (State::WasSelected(ts0), State::Selected(mut ts1), KeyCode::Char('e')|KeyCode::Char('E')) => {
                 match (ts0.selected(), ts1.selected()) {
                     (Some(index0),Some(index1)) => {
                         match (self.shortcuts.get_values().get(index0), self.configurations.get_values().get(index1)) {
@@ -229,8 +230,8 @@ impl App {
                     _ => {}
                 }
             },
-            (State::Selected(_),State::WasSelected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
-            (State::WasSelected(_),State::Selected(_), KeyCode::Char('q') | KeyCode::Esc) => self.exit(),
+            (State::Selected(_),State::WasSelected(_), KeyCode::Char('q')| KeyCode::Char('Q') | KeyCode::Esc) => self.exit(),
+            (State::WasSelected(_),State::Selected(_), KeyCode::Char('q')| KeyCode::Char('Q') | KeyCode::Esc) => self.exit(),
             (_,_,_) => {}
         }
     }
@@ -326,7 +327,7 @@ impl App {
         }
     }
 
-    fn execute_shortcut(&self, kind:&String) {
+    fn execute_shortcut(&self, kind:String) {
         if let Ok(mut file) = OpenOptions::new().write(true).create(true).truncate(true).open("current_command.txt") {
             let command: String;
             let current_configuration = self.configurations.get_values().iter().map(|c| c.get_value()).collect::<Vec<&String>>();

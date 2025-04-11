@@ -1,6 +1,6 @@
 use std::process::Command;
 use std::fs::OpenOptions;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::env;
 use std::thread;
 
@@ -15,92 +15,37 @@ impl Logs {
 }
 
 pub fn run_command() {
-    if let Ok(mut file) = OpenOptions::new().read(true).open("config.txt") {
-        let mut config = String::new();
-        if let Ok(_) = file.read_to_string(&mut config) {
-            map_config(config);
+    match env::consts::OS {
+        "linux" | "macos" => run_bash(),
+        "windows" => run_powershell(),
+        unsupported => Logs::write(format!("ERROR : Unsupported OS '{}'",unsupported)),
+    }
+}
+
+fn run_powershell() {
+    todo!("NOT TESTED FEATURE");
+}
+
+fn run_bash() {
+    let script = r#"
+    {
+        counter_window=$(tmux list-windows -t myshortcuts | wc -l)
+        current_command=$(cat current_command.txt)
+        tmux new-window -t myshortcuts
+        tmux send-keys -t myshortcuts:$counter_window "$current_command" C-m
+    } > log.txt 2>&1
+    "#;
+
+    thread::spawn(move || {
+        let exit_status = Command::new("bash")
+            .arg("-c")
+            .arg(script)
+            .status();
+        match exit_status {
+            Ok(_) => {},
+            Err(error) => Logs::write(format!("{}",error)),
         }
-    }
-}
-
-fn map_config(config: String) {
-    let config = config.split("\n").collect::<Vec<&str>>();
-    match (config.get(0),config.get(1)) {
-        (Some(terminal),Some(os)) => {
-            let terminal = String::from(*terminal);
-            match *os {
-                "windows" => {
-                    run_windows(terminal);
-                },
-                "macos" => {
-                    run_macos(terminal);
-                },
-                "linux" => {
-                    run_linux(terminal);
-                }
-                _ => {}
-            }
-        },
-        _ => {}
-    }
-    
-}
-
-fn run_windows(terminal: String) {
-    if let Ok(current_dir) = env::current_dir() {
-        let path = format!("{}/current_command.txt",current_dir.display());
-        if let Ok(mut file) = OpenOptions::new().write(true).read(true).open(path) {
-            let mut config = String::new();
-            if let Ok(_) = file.read_to_string(&mut config) {
-                let config = config.replace(" && "," ; ");
-                let _ = file.write_all(config.as_bytes());
-            }
-        }
-
-        thread::spawn(move || {
-            let mut child = Command::new(terminal)
-                .arg("-e")
-                .arg(format!("{}/main.ps1",current_dir.display()))
-                .spawn()
-                .expect("ERROR when try to launch.");
-            if let Err(error) = child.wait() {
-                Logs::write(format!("\nutils.rs : run_windows() :\n{}",error));
-            }
-        });
-    }
-}
-
-fn run_macos(terminal: String) {
-    if let Ok(current_dir) = env::current_dir() {
-        thread::spawn(move || {
-            let mut child = Command::new(terminal)
-                .arg("-e")
-                .arg(format!("{}/main.sh",current_dir.display()))
-                .arg(format!("{}/current_command.txt",current_dir.display()))
-                .spawn()
-                .expect("ERROR when try to launch.");
-            if let Err(error) = child.wait() {
-                Logs::write(format!("\nutils.rs : run_macos() :\n{}",error));
-            }
-        });
-    }
-}
-
-fn run_linux(terminal: String) {
-    if let Ok(mut file) = OpenOptions::new().read(true).open("current_command.txt") {
-        let mut command = String::new();
-        let _ = file.read_to_string(&mut command);
-        thread::spawn(move || {
-            let mut child = Command::new(terminal)
-                .arg("-e")
-                .arg(format!("{}; exec bash",command))
-                .spawn()
-                .expect("ERROR when try to launch.");
-            if let Err(error) = child.wait() {
-                Logs::write(format!("\nutils.rs : run_linux() line 99 :\n{}",error));
-            }
-        });
-    }
+    });
 }
 
 pub fn neo4j(vector: Vec<&String>) -> String {
