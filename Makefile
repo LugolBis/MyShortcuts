@@ -4,6 +4,7 @@
 	@$(MAKE) unset ALIAS=myshortcuts
 	@$(MAKE) set ALIAS=myshortcuts COMMAND='export MYSHORTCUTS_DIR=$(PWD) && $(PWD)/terminal.sh'
 	@chmod +x terminal.sh
+	@chmod +x command.sh
 
 set:
 	@if [ -z "$(ALIAS)" ] || [ -z "$(COMMAND)" ]; then \

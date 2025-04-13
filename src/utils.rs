@@ -27,19 +27,9 @@ fn run_powershell() {
 }
 
 fn run_bash() {
-    let script = r#"
-    {
-        counter_window=$(tmux list-windows -t myshortcuts | wc -l)
-        current_command=$(cat current_command.txt)
-        tmux new-window -t myshortcuts
-        tmux send-keys -t myshortcuts:$counter_window "$current_command" C-m
-    } > log.txt 2>&1
-    "#;
-
     thread::spawn(move || {
         let exit_status = Command::new("bash")
-            .arg("-c")
-            .arg(script)
+            .arg("command.sh")
             .status();
         match exit_status {
             Ok(_) => {},
@@ -186,15 +176,6 @@ pub mod macros {
             }
         };
     }
-
-    /// This macro take 3 arguments : a text, a pattern (used to split the text),<br>
-    /// a boolean (used to specified if you need the specific name format)
-    #[macro_export]
-    macro_rules! result_vec {
-        ($text: expr, $pattern: expr) => {
-            $text.split($pattern).filter(|e| !e.is_empty() && e!=&"\n").map(String::from).collect::<Vec<String>>()
-        };
-    }
 }
 
 #[test]
@@ -203,5 +184,4 @@ fn test_macro() {
     use crate::objects::Configuration;
     assert_eq!(format_config!(vec![Configuration::default()]),String::from("echo Welcome on MyShortcuts;"));
     assert_eq!(filter_config!(vec![String::from("lulu"),String::new(),String::from("tutu"),String::new(),String::new()]),vec![String::from("lulu"),String::new(),String::from("tutu")]);
-    assert_eq!(result_vec!("tutu;lulu;",";"), vec![String::from("tutu"),String::from("lulu")]);
 }

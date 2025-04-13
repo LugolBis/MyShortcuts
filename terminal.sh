@@ -16,7 +16,13 @@ fi
 
 # Create the session if necessary and send command
 if tmux has-session -t "$SESSION_NAME" 2>/dev/null; then
-    tmux send-keys -t "${SESSION_NAME}:0.0" "cargo run" C-m
+    WINDOW_INDEX="0"
+    if tmux list-windows -t "$SESSION_NAME" 2>/dev/null | grep -q "^\s*$WINDOW_INDEX:"; then
+        echo ""
+    else
+        tmux new-window -t myshortcuts
+        tmux send-keys -t "${SESSION_NAME}:0.0" "cd $MYSHORTCUTS_DIR && cargo run" C-m
+    fi
 else
     tmux new-session -d -s "$SESSION_NAME" -c "$MYSHORTCUTS_DIR"
     tmux send-keys -t "${SESSION_NAME}:0.0" "cargo run" C-m
