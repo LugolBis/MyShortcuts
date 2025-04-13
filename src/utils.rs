@@ -23,7 +23,20 @@ pub fn run_command() {
 }
 
 fn run_powershell() {
-    todo!("NOT TESTED FEATURE");
+    thread::spawn(move || {
+        if let Ok(current_dir) = env::current_dir() {
+            let script_path = current_dir.join("main.ps1");
+            let exit_status = Command::new("powershell")
+                .args(vec!["-ExecutionPolicy","Bypass","-File",&format!("{}",script_path.display())])
+                .status();
+
+            match exit_status {
+                Ok(_) => {},
+                Err(error) => Logs::write(format!("{}",error)),
+            }
+        }
+        else {Logs::write(String::from("ERROR : utils.rs - run_powershell():\nNo current_dir"))}
+    });
 }
 
 fn run_bash() {
