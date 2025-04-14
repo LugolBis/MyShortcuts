@@ -8,7 +8,7 @@ pub struct Logs;
 
 impl Logs {
     pub fn write(content: String) {
-        if let Ok(mut file) = OpenOptions::new().write(true).create(true).open("log.txt") {
+        if let Ok(mut file) = OpenOptions::new().append(true).create(true).open("log.txt") {
             let _ = file.write(content.as_bytes());
         }
     }
@@ -18,7 +18,7 @@ pub fn run_command() {
     match env::consts::OS {
         "linux" | "macos" => run_bash(),
         "windows" => run_powershell(),
-        unsupported => Logs::write(format!("ERROR : Unsupported OS '{}'",unsupported)),
+        unsupported => Logs::write(format!("\nERROR : Unsupported OS '{}'",unsupported)),
     }
 }
 
@@ -35,7 +35,7 @@ fn run_powershell() {
                 Err(error) => Logs::write(format!("{}",error)),
             }
         }
-        else {Logs::write(String::from("ERROR : utils.rs - run_powershell():\nNo current_dir"))}
+        else {Logs::write(String::from("\nERROR : utils.rs - run_powershell():\nNo current_dir"))}
     });
 }
 
@@ -46,7 +46,7 @@ fn run_bash() {
             .status();
         match exit_status {
             Ok(_) => {},
-            Err(error) => Logs::write(format!("{}",error)),
+            Err(error) => Logs::write(format!("\n{}",error)),
         }
     });
 }

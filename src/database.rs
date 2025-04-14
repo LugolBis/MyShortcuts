@@ -61,21 +61,6 @@ fn extract_value(value:Value) -> Result<String,String> {
     }
 }
 
-pub fn generate_new_name() -> String {
-    if let Ok(name) = Database::query_read("select name from shortcuts where name like 'Default%' order by name desc limit 1;") {
-        let name = name.replace("Default", "").replace(";\n","");
-        if let Ok(number) = name.parse::<u64>() {
-            format!("Default{}",number+1)
-        }
-        else {
-            String::from("Default0")
-        }
-    }
-    else {
-        String::from("Default0")
-    }
-}
-
 #[test]
 fn test_query_read() {
     match Database::query_read("select * from shortcuts;") {

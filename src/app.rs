@@ -3,7 +3,7 @@ use std::io::{self,Write};
 
 use crate::ui::{WidgetConfigurations,WidgetShortcuts,Common,render_pop_up,render_help};
 use crate::objects::*;
-use crate::database::{generate_new_name, Database, AVAILABLE_SHEME, CLASSIC_SHEME, CUSTOM_SHEME, FILE_SCHEME, MONGODB_SCHEME, REDIS_SCHEME, SOCKET_SCHEME};
+use crate::database::{Database, AVAILABLE_SHEME, CLASSIC_SHEME, CUSTOM_SHEME, FILE_SCHEME, MONGODB_SCHEME, REDIS_SCHEME, SOCKET_SCHEME};
 use crate::utils::*;
 use crate::{format_config, filter_config};
 
@@ -230,6 +230,9 @@ impl App {
                     _ => {}
                 }
             },
+            (State::Selected(_)|State::WasSelected(_),State::Selected(_)|State::WasSelected(_),KeyCode::Char('h')|KeyCode::Char('H')) => {
+                self.configurations.hidde()
+            },
             (State::Selected(_),State::WasSelected(_), KeyCode::Char('q')| KeyCode::Char('Q') | KeyCode::Esc) => self.exit(),
             (State::WasSelected(_),State::Selected(_), KeyCode::Char('q')| KeyCode::Char('Q') | KeyCode::Esc) => self.exit(),
             (_,_,_) => {}
@@ -370,7 +373,8 @@ impl App {
 
     fn add_new_shortcut(&self) {
         let kind = AVAILABLE_SHEME[self.show_pop_up.1];
-        let new_name = generate_new_name();
+        let names = self.shortcuts.get_values().iter().map(|s| String::clone(s.get_name())).collect::<Vec<String>>();
+        let new_name = generate_name(names);
         let query: String;
         match kind {
             "Oracle" => query = format!("insert into shortcuts values ('{}','Required;Required;Required;Required','Oracle');",new_name),
@@ -384,7 +388,9 @@ impl App {
             "Custom" => query = format!("insert into shortcuts values ('{}','echo Welcome on MyShortcuts','Custom');",new_name),
             _ => query = String::new()
         }
-        let _ = Database::query_write(&query);
+        if let Err(error) = Database::query_write(&query) {
+            Logs::write(format!("\nERROR : app.rs - add_new_shortcut() :\n{}\n|-> Name generated : '{}'",error,new_name));
+        }
     }
 
     fn save_editing(&mut self,new_value:String,is_shortcut:bool) {
@@ -398,6 +404,14 @@ impl App {
         let _ = Database::query_write(&query);
         self.save = String::new();
     }
+}
+
+fn generate_name(current_names: Vec<String>) -> String {
+    let nb_max = current_names.iter()
+        .filter(|x| x.contains("Default"))
+        .map(|x| (*x).replace("Default","").parse::<u64>().unwrap_or(0))
+        .max().unwrap_or(0);
+    format!("Default{}",nb_max+1)
 }
 
 fn get_current_config(configurations: Vec<&str>, kind: &str) -> Vec<Configuration> {

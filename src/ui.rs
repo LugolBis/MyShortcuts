@@ -27,7 +27,8 @@ pub struct WidgetShortcuts {
 #[derive(Debug)]
 pub struct WidgetConfigurations {
     values: Vec<Configuration>,
-    state: State
+    state: State,
+    hidde: bool
 }
 
 impl WidgetShortcuts {
@@ -59,7 +60,7 @@ impl WidgetShortcuts {
 
 impl WidgetConfigurations {
     pub fn from(values:Vec<Configuration>,state:State) -> Self {
-        WidgetConfigurations { values, state }
+        WidgetConfigurations { values, state, hidde: true }
     }
 
     pub fn get_values(&self) -> &Vec<Configuration> {
@@ -81,6 +82,10 @@ impl WidgetConfigurations {
     pub fn set_values(&mut self, values:Vec<Configuration>) {
         if values.len()>0 { self.values = values }
         else { self.values = vec![Configuration::default()] }
+    }
+
+    pub fn hidde(&mut self) {
+        self.hidde = !self.hidde
     }
 }
 
@@ -109,7 +114,7 @@ impl Common for WidgetShortcuts {
                 .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                 .collect::<Row>()
                 .style(Style::new().fg(ROW_FONT).bg(ROW_BG))
-                .height(4)
+                .height(3)
         }).collect()
     }
 
@@ -138,14 +143,28 @@ impl Common for WidgetConfigurations {
     }
 
     fn get_rows(&self) -> Vec<Row<'_>> {
-        self.values.iter().map(|configuration| {
+        if self.hidde == true {
+            self.values.iter().map(|configuration| {
+                let mut item = [configuration.get_kind(), configuration.get_value()];
+                let binding = "*".repeat(item[1].len());
+                item[1] = &binding;
+                item.into_iter()
+                    .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
+                    .collect::<Row>()
+                    .style(Style::new().fg(ROW_FONT).bg(ROW_BG))
+                    .height(3)
+            }).collect()
+        }
+        else {
+            self.values.iter().map(|configuration| {
             let item = [configuration.get_kind(), configuration.get_value()];
             item.into_iter()
                 .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                 .collect::<Row>()
                 .style(Style::new().fg(ROW_FONT).bg(ROW_BG))
-                .height(4)
-        }).collect()
+                .height(3)
+            }).collect()
+        }
     }
 
     fn get_editing_value(&self,index:usize) -> [String;2] {
@@ -203,7 +222,7 @@ pub trait Common {
                     let mut editing_value = self.get_editing_value(index);
                     editing_value[1] = input.value().into();
                     rows[index] = editing_value.into_iter().map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
-                        .collect::<Row>().style(Style::new().bg(Color::Black)).height(4);
+                        .collect::<Row>().style(Style::new().bg(Color::Black)).height(3);
 
                     let width = area.width.max(2) - 3;
                     let scroll = input.visual_scroll(width as usize);
@@ -236,7 +255,7 @@ pub trait Common {
 fn calculate_cursor_position(area:Rect, cursor:u16, left_constraint: u16, index: usize) -> (u16, u16) {
     let x = area.x + cursor + left_constraint + 5u16;
     let index = if index>11 {11 as u16} else {index as u16};
-    let y = area.y + 2u16 * (index+1) + 2u16 * (index) + 2u16;
+    let y = area.y + 2u16 * (index+1) + 1u16 * (index) + 2u16;
     (x,y)
 }
 
@@ -264,13 +283,13 @@ pub fn render_pop_up(frame: &mut Frame, index:usize, area: Rect) {
 pub fn render_help(frame: &mut Frame, area: Rect) {
     let title = Line::from(" Help command ".bold());
     let lines = vec![
-        Line::from(vec![]),
         Line::from(vec![" Select : ".into(), "<Up>".yellow(), " / ".into(), "<Down>".yellow(), " / ".into(), "<Left>".yellow(), " / ".into(), "<Right>".yellow()]),
         Line::from(vec![" Add new shortcut : ".into(), "<a> ".yellow()]),
         Line::from(vec![" Remove shortcut/configuration value : ".into(), "<r> ".yellow()]),
         Line::from(vec![" Open the selected shortcut : ".into(), "<o> ".yellow()]),
         Line::from(vec![" Edit shortcut name/configuration value : ".into(), "<e> ".yellow()]),
-        Line::from(vec![" To save editing : ".into(), "<Enter> ".yellow()]),
+        Line::from(vec![" Save changes : ".into(), "<Enter> ".yellow()]),
+        Line::from(vec![" Hidde/Show congigurations : ".into(), "<h> ".yellow()]),
         Line::from(vec![" Quit : ".into(), "<q>".yellow(), " / ".into(), "<Esc> ".yellow()])
     ];
 
