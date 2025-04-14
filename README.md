@@ -26,7 +26,12 @@ $ myshortcuts
 ```
 
 ### Windows
-- 🏗️ Not already supported.
+Clone the repository :
+```Powershell
+$ git clone https://github.com/LugolBis/MyShortcuts.git
+```
+> [!NOTE]
+> You can easily configure a powershell alias by yourself to ```cd``` in MyShortcuts dir and launch it with ```cargo run```.
 
 ## Available Scheme
 **MyShortcuts** integrate predefined schemes for the databases connection. These schemes help you to adding and editing a new database connection by provide you the configuration needed by any of them.
@@ -54,13 +59,17 @@ Moreover these schemes are used to format your configuration and generate a shel
 ## Compatibility
 |OS|Shell|Supported|Requirements|
 |:-:|:-:|:-:|:-:|
-|Linux/macOS|BashScript|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#requirements)|
-|Windows|PowerShell|🏗️​||
+|Linux/macOS|BashScript|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#bashscript-)|
+|Windows|PowerShell|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#powershell-)|
 
 ## Requirements
 ### Linux/macOS :
 #### BashScript :
 - [Tmux](https://github.com/tmux/tmux)
+- Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
+
+### Windows :
+#### Powershell :
 - Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
 
 ## Privacy
