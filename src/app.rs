@@ -175,10 +175,17 @@ impl App {
                 self.show_pop_up = (false,0);
                 self.shortcuts.set_state(State::Selected(index));
             }
-            (State::Selected(index),State::WasSelected(_),KeyCode::Char('r')|KeyCode::Char('R')) => {
-                if let Some(index) = index.selected() {
-                    if let Some(shortcut) = self.shortcuts.get_values().get(index) {
+            (State::Selected(mut ts0),State::WasSelected(_),KeyCode::Char('r')|KeyCode::Char('R')) => {
+                if let Some(index0) = ts0.selected() {
+                    if let Some(shortcut) = self.shortcuts.get_values().get(index0) {
                         let _ = Database::query_write(&format!("delete from shortcuts where name='{}';", shortcut.get_name()));
+                        if self.shortcuts.get_values().len() == 1 {
+                            if let Err(error) = Database::query_write("insert into shortcuts values ('Default0', 'echo Welcome on MyShortcuts !', 'Custom');") {
+                                Logs::write(format!("ERROR : app.rs - handle_key_event() -1st :\n{}",error));
+                            }
+                        }
+                        ts0.select(Some(index0.saturating_sub(1)));
+                        self.shortcuts.set_state(State::Selected(ts0));
                     }
                 }
             },
@@ -265,15 +272,24 @@ impl App {
                     }
                 }
             },
-            (State::Selected(ts) | State::WasSelected(ts), State::Selected(_) | State::WasSelected(_)) => {
-                if let Some(shortcut) = self.shortcuts.get_values().get(ts.selected().unwrap_or(0)) {
-                    if let Ok(configurations) = Database::query_read(
+            (State::Selected(ts0) | State::WasSelected(ts0), State::Selected(_) | State::WasSelected(_)) => {
+                let index0 = ts0.selected().unwrap_or(0);
+                if let Some(shortcut) = self.shortcuts.get_values().get(index0) {
+                    match Database::query_read(
                         &format!("select configuration from shortcuts where name='{}';",shortcut.get_name()))
                     {
-                        let configurations = configurations.split(";").map(|c| c).collect::<Vec<&str>>();
-                        let new_configurations = get_current_config(configurations, shortcut.get_kind());
-                        self.configurations.set_values(new_configurations);
+                        Ok(configurations) => {
+                            let configurations = configurations.split(";").map(|c| c.trim_end()).collect::<Vec<&str>>();
+                            let new_configurations = get_current_config(configurations, shortcut.get_kind());
+                            self.configurations.set_values(new_configurations);
+                        }
+                        Err(error) => {
+                            Logs::write(format!("\nERROR : app.rs - update_widgets_args() -1st {}",error));
+                        }
                     }
+                }
+                else {
+                    Logs::write(format!("\nERROR : app.rs - update_widgets_args() -2nd :\n   app.shortcuts is empty : {:?}",self.shortcuts.get_values()));
                 }
             },
             _ => {}
