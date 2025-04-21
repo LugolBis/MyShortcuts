@@ -25,6 +25,7 @@ impl Shortcut {
         Shortcut { name: String::from("Default0"), kind: String::from("Custom") }
     }
 
+    #[allow(unused)]
     pub fn from(name:&str, kind:&str) -> Self {
         Shortcut { name: String::from(name), kind: String::from(kind) }
     }

@@ -11,14 +11,27 @@ The tool offers the following features :
 <br>
 
 ## Getting started
-### Linux
+### Linux/macOS - Bash :
 Clone the repository :
 ```BashScript
 $ git clone https://github.com/LugolBis/MyShortcuts.git
 ```
 Configure the project :
 ```BashScript
-$ cd etc/MyShortcuts && make
+$ cd MyShortcuts && make bash
+```
+Launch it :
+```BashScript
+$ myshortcuts
+```
+### Linux/macOS - Zsh :
+Clone the repository :
+```BashScript
+$ git clone https://github.com/LugolBis/MyShortcuts.git
+```
+Configure the project :
+```BashScript
+$ cd MyShortcuts && make zsh
 ```
 Launch it :
 ```BashScript
@@ -60,11 +73,15 @@ Moreover these schemes are used to format your configuration and generate a shel
 |OS|Shell|Supported|Requirements|
 |:-:|:-:|:-:|:-:|
 |Linux/macOS|BashScript|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#bashscript-)|
+|Linux/macOS|Zsh|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#zsh-)|
 |Windows|PowerShell|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#powershell-)|
 
 ## Requirements
 ### Linux/macOS :
 #### BashScript :
+- [Tmux](https://github.com/tmux/tmux)
+- Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
+#### Zsh :
 - [Tmux](https://github.com/tmux/tmux)
 - Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
 
