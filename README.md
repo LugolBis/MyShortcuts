@@ -7,6 +7,9 @@ The tool offers the following features :
 - Edit database connections and shell command
 - Formats your configurations and generates a shell command (see [Available Scheme](https://github.com/LugolBis/MyShortcuts/new/main?filename=README.md#available-scheme))
 - Open a new terminal and execute a shell command on it
+<br>
+
+![Demo](./doc/demo.gif)
 
 <br>
 

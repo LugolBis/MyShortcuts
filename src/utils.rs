@@ -1,6 +1,6 @@
 use std::process::Command;
 use std::fs::OpenOptions;
-use std::io::Write;
+use std::io::{Write, Read};
 use std::env;
 use std::thread;
 
@@ -24,19 +24,49 @@ pub fn run_command() {
 
 fn run_powershell() {
     thread::spawn(move || {
-        if let Ok(current_dir) = env::current_dir() {
-            let script_path = current_dir.join("main.ps1");
-            let exit_status = Command::new("powershell")
-                .args(vec!["-ExecutionPolicy","Bypass","-File",&format!("{}",script_path.display())])
-                .status();
-
-            match exit_status {
-                Ok(_) => {},
-                Err(error) => Logs::write(format!("{}",error)),
+        if let Ok(_) = format_to_powershell() {
+            if let Ok(current_dir) = env::current_dir() {
+                let script_path = current_dir.join("main.ps1");
+                let exit_status = Command::new("powershell")
+                    .args(vec!["-ExecutionPolicy","Bypass","-File",&format!("{}",script_path.display())])
+                    .status();
+        
+                match exit_status {
+                    Ok(_) => {},
+                    Err(error) => Logs::write(format!("{}",error)),
+                }
             }
+            else {Logs::write(String::from("\nERROR : utils.rs - run_powershell():\nNo current_dir"))}
         }
-        else {Logs::write(String::from("\nERROR : utils.rs - run_powershell():\nNo current_dir"))}
     });
+}
+
+fn format_to_powershell() -> Result<(),()> {
+    match OpenOptions::new().write(true).truncate(true).open("current_command.txt") {
+        Ok(mut file) => {
+            let mut content = String::new();
+            match file.read_to_string(&mut content) {
+                Ok(_) => {
+                    content = content.replace(" && ", " ; ");
+                    match file.write_all(content.as_bytes()) {
+                        Ok(_) => Ok(()),
+                        Err(error) => {
+                            Logs::write(format!("ERROR : utils.rs - format_to_powershell - 3\n{}",error));
+                            Err(())
+                        }
+                    }
+                },
+                Err(error) => {
+                    Logs::write(format!("ERROR : utils.rs - format_to_powershell - 2nd\n{}",error));
+                    Err(())
+                }
+            }
+        },
+        Err(error) => {
+            Logs::write(format!("ERROR : utils.rs - format_to_powershell - 1st\n{}",error));
+            Err(())
+        }
+    }
 }
 
 fn run_bash() {
