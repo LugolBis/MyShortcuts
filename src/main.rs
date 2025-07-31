@@ -6,7 +6,7 @@ mod app;
 mod shell_scripts;
 
 use utils::{get_folder_path, Logs};
-use database::Database;
+use database::{Database, DB_NAME};
 use app::main_app;
 use std::process::Command;
 use std::{env, fs};
@@ -26,7 +26,7 @@ fn main() {
             }
         }
 
-        path.push("my_shortcuts.db");
+        path.push(DB_NAME);
 
         if !fs::exists(path).unwrap_or(true) {
             if let Err(error) = Database::init() {

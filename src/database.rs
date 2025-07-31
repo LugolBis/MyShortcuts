@@ -1,9 +1,7 @@
-use std::path::PathBuf;
-
 use sqlite::Value;
 
 use crate::utils::get_folder_path;
-const DB_NAME: &str = "my_shortcuts.db";
+pub const DB_NAME: &str = "my_shortcuts.db";
 
 /// Used For the following databases : Oracle, PostgreSQL, Neo4j, 
 pub const CLASSIC_SHEME: [&str;6] = ["Host","Port","Username","Password","Database","Script Path"];
@@ -44,7 +42,7 @@ impl Database {
         let mut path = get_folder_path().map_err(|e| format!("{:?}", e))?;
         path.push(DB_NAME);
         
-        let shortcut = sqlite::open(DB_NAME)
+        let shortcut = sqlite::open(path)
             .map_err(|e| format!("{e}"))?;
 
         let mut cursor = shortcut.prepare(query).map_err(|e| format!("{e}"))?.into_iter();

@@ -56,7 +56,10 @@ fn run_powershell() {
 }
 
 fn format_to_powershell() -> Result<(),()> {
-    match OpenOptions::new().write(true).truncate(true).open("current_command.txt") {
+    let mut path = get_folder_path().unwrap_or(PathBuf::new());
+    path.push("current_command.txt");
+    
+    match OpenOptions::new().write(true).truncate(true).open(path) {
         Ok(mut file) => {
             let mut content = String::new();
             match file.read_to_string(&mut content) {
