@@ -259,7 +259,7 @@ impl App {
             _ => {
                 if let Ok(shortcuts) = Database::query_read("select name,type from shortcuts order by type;") {
                     self.shortcuts.set_values(shortcuts.split("\n").filter(|e| *e!="" && *e!="\n")
-                        .map(|cnx| if let Ok(cnx)  = Shortcut::parse(cnx)  {cnx} else {Shortcut::default()}).collect::<Vec<Shortcut>>());
+                        .map(|cnx| if let Ok(cnx) = Shortcut::parse(cnx) {cnx} else {Shortcut::default()}).collect::<Vec<Shortcut>>());
                 }
             }
         }

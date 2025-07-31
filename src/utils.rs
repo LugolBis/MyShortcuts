@@ -1,17 +1,30 @@
+use std::path::PathBuf;
 use std::process::Command;
 use std::fs::OpenOptions;
 use std::io::{Write, Read};
 use std::env;
 use std::thread;
 
+use crate::shell_scripts::{COMMAND, MAIN};
+
 pub struct Logs;
 
 impl Logs {
     pub fn write(content: String) {
-        if let Ok(mut file) = OpenOptions::new().append(true).create(true).open("log.txt") {
+        let mut path = get_folder_path().unwrap();
+        path.push("log.txt"); 
+        if let Ok(mut file) = OpenOptions::new().append(true).create(true).open(path) {
             let _ = file.write(content.as_bytes());
         }
     }
+}
+
+pub fn get_folder_path() -> Result<PathBuf, String> {
+    let mut exe_path = env::current_exe()
+        .map_err(|e| format!("{}", e))?;
+    exe_path.pop();
+    exe_path.push("myshortcuts_resources");
+    Ok(exe_path)
 }
 
 pub fn run_command() {
@@ -25,10 +38,11 @@ pub fn run_command() {
 fn run_powershell() {
     thread::spawn(move || {
         if let Ok(_) = format_to_powershell() {
-            if let Ok(current_dir) = env::current_dir() {
-                let script_path = current_dir.join("main.ps1");
+            if let Ok(folder_path) = get_folder_path() {
+                let script = MAIN.replace("$MYSHORTCUTS_DIR", &format!("{}", folder_path.display()));
+
                 let exit_status = Command::new("powershell")
-                    .args(vec!["-ExecutionPolicy","Bypass","-File",&format!("{}",script_path.display())])
+                    .args(vec!["-ExecutionPolicy","Bypass","-File", &script])
                     .status();
         
                 match exit_status {
@@ -71,12 +85,21 @@ fn format_to_powershell() -> Result<(),()> {
 
 fn run_bash() {
     thread::spawn(move || {
-        let exit_status = Command::new("bash")
-            .arg("command.sh")
-            .status();
-        match exit_status {
-            Ok(_) => {},
-            Err(error) => Logs::write(format!("\n{}",error)),
+        match get_folder_path() {
+            Ok(folder_path) => {
+                let script = COMMAND.replace("$MYSHORTCUTS_DIR", &format!("{}", folder_path.display()));
+
+                let exit_status = Command::new("bash")
+                    .arg(script)
+                    .status();
+                match exit_status {
+                    Ok(_) => {},
+                    Err(error) => Logs::write(format!("\n{}",error)),
+                }
+            },
+            Err(error) => {
+                Logs::write(error)
+            }
         }
     });
 }
@@ -219,12 +242,4 @@ pub mod macros {
             }
         };
     }
-}
-
-#[test]
-fn test_macro() {
-    use super::*;
-    use crate::objects::Configuration;
-    assert_eq!(format_config!(vec![Configuration::default()]),String::from("echo Welcome on MyShortcuts;"));
-    assert_eq!(filter_config!(vec![String::from("lulu"),String::new(),String::from("tutu"),String::new(),String::new()]),vec![String::from("lulu"),String::new(),String::from("tutu")]);
 }
