@@ -90,7 +90,7 @@ fn run_bash() {
     thread::spawn(move || {
         match get_folder_path() {
             Ok(folder_path) => {
-                let script = COMMAND.replace("$MYSHORTCUTS_DIR", &format!("{}", folder_path.display()));
+                let script = COMMAND.replace("$0", &format!("{}", folder_path.display()));
 
                 let exit_status = Command::new("bash")
                     .arg("-c")

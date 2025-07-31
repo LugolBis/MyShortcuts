@@ -21,19 +21,14 @@ else
 fi
 "#;
 
-pub const COMMAND: &str = r#"
+pub const COMMAND: &str = r###"
 {
-    USED_INDEX=$(tmux list-windows -t myshortcuts -F "\#{window_index}" 2>/dev/null)
-    NEW_INDEX=1
-    while echo "$USED_INDEX" | grep -q -w "$NEW_INDEX"; do
-        NEW_INDEX=$(($NEW_INDEX + 1))
-    done
-
-    CURRENT_COMMAND=$(cat $MYSHORTCUTS_DIR/current_command.txt)
-    tmux new-window -t myshortcuts
+    MYSHORTCUTS_DIR="$(dirname "$0")"
+    CURRENT_COMMAND=$(<"$MYSHORTCUTS_DIR/current_command.txt")
+    NEW_INDEX=$(tmux new-window -t myshortcuts -P -F "#{window_index}")
     tmux send-keys -t myshortcuts:$NEW_INDEX "$CURRENT_COMMAND" C-m
-} > log.txt 2>&1
-"#;
+} > $MYSHORTCUTS_DIR/log.txt 2>&1
+"###;
 
 pub const MAIN: &str = r#"
 $fileCommande = "$MYSHORTCUTS_DIR\current_command.txt"
