@@ -1,5 +1,8 @@
+use std::path::PathBuf;
+
 use sqlite::Value;
 
+use crate::utils::get_folder_path;
 const DB_NAME: &str = "my_shortcuts.db";
 
 /// Used For the following databases : Oracle, PostgreSQL, Neo4j, 
@@ -28,13 +31,19 @@ impl Database {
     }
 
     pub fn query_write(query:&str) -> Result<(), String> {
-        let shortcut = sqlite::open(DB_NAME)
+        let mut path = get_folder_path().map_err(|e| format!("{:?}", e))?;
+        path.push(DB_NAME);
+
+        let shortcut = sqlite::open(path)
             .map_err(|e| format!("{e}"))?;
         shortcut.execute(query).map_err(|e| format!("{e}"))
     }
 
     pub fn query_read(query:&str) -> Result<String, String> {
         let mut result = String::new();
+        let mut path = get_folder_path().map_err(|e| format!("{:?}", e))?;
+        path.push(DB_NAME);
+        
         let shortcut = sqlite::open(DB_NAME)
             .map_err(|e| format!("{e}"))?;
 
@@ -43,7 +52,7 @@ impl Database {
         while let Some(tuple) = cursor.try_next().map_err(|e| format!("{e}"))? {
             let mut line = String::new();
             for value in tuple {
-                line.push_str(&format!("{};",extract_value(value).map_err(|e| format!("{e}"))?));
+                line.push_str(&format!("{};", extract_value(value).map_err(|e| format!("{e}"))?));
             }
             result.push_str(&format!("{}\n",line));
         }

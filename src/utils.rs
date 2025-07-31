@@ -90,6 +90,7 @@ fn run_bash() {
                 let script = COMMAND.replace("$MYSHORTCUTS_DIR", &format!("{}", folder_path.display()));
 
                 let exit_status = Command::new("bash")
+                    .arg("-c")
                     .arg(script)
                     .status();
                 match exit_status {

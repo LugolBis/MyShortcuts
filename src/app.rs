@@ -27,7 +27,7 @@ pub struct App {
     configurations:WidgetConfigurations,
     /// The name of the Shortcut before any modification
     save: String,
-    show_pop_up: (bool,usize),
+    show_pop_up: (bool, usize),
     exit: bool,
 }
 
