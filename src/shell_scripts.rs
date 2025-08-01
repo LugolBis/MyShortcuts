@@ -23,9 +23,17 @@ fi
 
 pub const COMMAND: &str = r###"
 {
-    MYSHORTCUTS_DIR="$(dirname "$0")"
+    MYSHORTCUTS_DIR=$0
     CURRENT_COMMAND=$(<"$MYSHORTCUTS_DIR/current_command.txt")
-    NEW_INDEX=$(tmux new-window -t myshortcuts -P -F "#{window_index}")
+
+    USED_INDEX=$(tmux list-windows -t myshortcuts -F "#{window_index}" 2>/dev/null)
+    NEW_INDEX=1
+
+    while echo "$USED_INDEX" | grep -q -w "$NEW_INDEX"; do
+        NEW_INDEX=$(($NEW_INDEX + 1))
+    done
+
+    tmux new-window -t myshortcuts:$NEW_INDEX -k
     tmux send-keys -t myshortcuts:$NEW_INDEX "$CURRENT_COMMAND" C-m
 } > $0/log.txt 2>&1
 "###;
