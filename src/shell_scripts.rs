@@ -27,7 +27,7 @@ pub const COMMAND: &str = r###"
     CURRENT_COMMAND=$(<"$MYSHORTCUTS_DIR/current_command.txt")
     NEW_INDEX=$(tmux new-window -t myshortcuts -P -F "#{window_index}")
     tmux send-keys -t myshortcuts:$NEW_INDEX "$CURRENT_COMMAND" C-m
-} > $MYSHORTCUTS_DIR/log.txt 2>&1
+} > $0/log.txt 2>&1
 "###;
 
 pub const MAIN: &str = r#"
