@@ -14,30 +14,36 @@ The tool offers the following features :
 <br>
 
 ## Getting started
+
+### Install with ```cargo``` (recommanded) :
+```Bash
+$ cargo install --git https://github.com/LugolBis/MyShortcuts.git
+```
+
 ### Linux/macOS - Bash :
 Clone the repository :
-```BashScript
+```Bash
 $ git clone https://github.com/LugolBis/MyShortcuts.git
 ```
 Configure the project :
-```BashScript
+```Bash
 $ cd MyShortcuts && make bash
 ```
 Launch it :
-```BashScript
+```Bash
 $ myshortcuts
 ```
 ### Linux/macOS - Zsh :
 Clone the repository :
-```BashScript
+```Bash
 $ git clone https://github.com/LugolBis/MyShortcuts.git
 ```
 Configure the project :
-```BashScript
+```Bash
 $ cd MyShortcuts && make zsh
 ```
 Launch it :
-```BashScript
+```Bash
 $ myshortcuts
 ```
 
@@ -75,13 +81,13 @@ Moreover these schemes are used to format your configuration and generate a shel
 ## Compatibility
 |OS|Shell|Supported|Requirements|
 |:-:|:-:|:-:|:-:|
-|Linux/macOS|BashScript|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#bashscript-)|
+|Linux/macOS|Bash|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#Bash-)|
 |Linux/macOS|Zsh|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#zsh-)|
 |Windows|PowerShell|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#powershell-)|
 
 ## Requirements
 ### Linux/macOS :
-#### BashScript :
+#### Bash :
 - [Tmux](https://github.com/tmux/tmux)
 - Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
 #### Zsh :
