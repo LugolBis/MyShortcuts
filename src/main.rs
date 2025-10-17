@@ -6,7 +6,7 @@ mod utils;
 
 use app::main_app;
 use database::{DB_NAME, Database};
-use std::fs;
+use std::{fs::{self, OpenOptions}, io::Write};
 use utils::{Logs, get_folder_path};
 
 fn main() {
@@ -34,7 +34,20 @@ fn main() {
     }
 
     match main_app() {
-     Ok(message) => print!("{}", message),
-        Err(error) => print!("ERROR with the function mainApp :\n{error}"),
+        Ok(command) => {
+            if !command.is_empty() {
+                match OpenOptions::new().create(true).truncate(true).write(true).open("/tmp/myshortcuts_command.sh") {
+                    Ok(mut file) => {
+                        if let Err(error) = file.write_all(command.as_bytes()) {
+                            Logs::write(format!("\n{}", error));
+                        }
+                    }
+                    Err(error) => {
+                        Logs::write(format!("\n{}", error));
+                    }
+                }
+            }
+        },
+        Err(error) => Logs::write(format!("ERROR with the function mainApp :\n{error}")),
     }
 }

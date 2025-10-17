@@ -222,8 +222,8 @@ impl App {
                 self.exit();
                 if let Some(shortcut) = self.shortcuts.get_values().get(ts0.selected().unwrap_or(0))
                 {
-                    let message: String = self.get_shortcut(String::clone(shortcut.get_kind()));
-                    return Some(message);
+                    let command: String = self.get_shortcut(String::clone(shortcut.get_kind()));
+                    return Some(command);
                 }
             }
             (
@@ -541,7 +541,8 @@ impl App {
         } else if kind == "Custom" {
             String::clone(self.configurations.get_values()[0].get_value())
         } else {
-            format!("Configuration detected : {:#?}", current_configuration)
+            Logs::write(format!("Configuration detected : {:#?}", current_configuration));
+            "".to_owned()
         }
     }
 
