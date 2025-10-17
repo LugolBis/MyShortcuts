@@ -5,38 +5,49 @@ use tui_input::Input;
 pub enum State {
     Selected(TableState),
     WasSelected(TableState),
-    Editing(TableState, Input)
+    Editing(TableState, Input),
 }
 
 #[derive(Debug)]
 pub struct Shortcut {
     name: String,
-    kind: String
+    kind: String,
 }
 
 #[derive(Debug)]
 pub struct Configuration {
     value: String,
-    kind: String
+    kind: String,
 }
 
 impl Shortcut {
     pub fn default() -> Self {
-        Shortcut { name: String::from("Default0"), kind: String::from("Custom") }
+        Shortcut {
+            name: String::from("Default0"),
+            kind: String::from("Custom"),
+        }
     }
 
     #[allow(unused)]
-    pub fn from(name:&str, kind:&str) -> Self {
-        Shortcut { name: String::from(name), kind: String::from(kind) }
+    pub fn from(name: &str, kind: &str) -> Self {
+        Shortcut {
+            name: String::from(name),
+            kind: String::from(kind),
+        }
     }
 
-    pub fn parse(value:&str) -> Result<Self,String> {
+    pub fn parse(value: &str) -> Result<Self, String> {
         let vector = value.split(";").collect::<Vec<&str>>();
-        if let (Some(name),Some(kind)) = (vector.get(0),vector.get(1)) {
-            Ok(Shortcut {name: String::from(*name), kind: String::from(*kind)})
-        }
-        else {
-            Err(format!("ERROR : when try to parse the following shortcut : '{}'",value))
+        if let (Some(name), Some(kind)) = (vector.first(), vector.get(1)) {
+            Ok(Shortcut {
+                name: String::from(*name),
+                kind: String::from(*kind),
+            })
+        } else {
+            Err(format!(
+                "ERROR : when try to parse the following shortcut : '{}'",
+                value
+            ))
         }
     }
 
@@ -55,11 +66,17 @@ impl Shortcut {
 
 impl Configuration {
     pub fn default() -> Self {
-        Configuration { value: String::from("echo Welcome on MyShortcuts"), kind: String::from("DefaultProperty") }
+        Configuration {
+            value: String::from("echo Welcome on MyShortcuts"),
+            kind: String::from("DefaultProperty"),
+        }
     }
 
-    pub fn from(value:&str, kind:&str) -> Self {
-        Configuration { value: String::from(value), kind: String::from(kind) }
+    pub fn from(value: &str, kind: &str) -> Self {
+        Configuration {
+            value: String::from(value),
+            kind: String::from(kind),
+        }
     }
 
     pub fn get_value(&self) -> &String {
