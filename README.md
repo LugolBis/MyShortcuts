@@ -15,45 +15,24 @@ The tool offers the following features :
 
 ## Getting started
 
-### Install with ```cargo``` (recommanded) :
+### Install with ```cargo``` :
 ```Bash
 $ cargo install --git https://github.com/LugolBis/MyShortcuts.git
 ```
+<br>
 
-### Linux/macOS - Bash :
-Clone the repository :
-```Bash
-$ git clone https://github.com/LugolBis/MyShortcuts.git
+### Configure the shell command :
+Add the following code in your ```~/.bashrc``` or ```~/.zshrc``` :
 ```
-Configure the project :
-```Bash
-$ cd MyShortcuts && make bash
-```
-Launch it :
-```Bash
-$ myshortcuts
-```
-### Linux/macOS - Zsh :
-Clone the repository :
-```Bash
-$ git clone https://github.com/LugolBis/MyShortcuts.git
-```
-Configure the project :
-```Bash
-$ cd MyShortcuts && make zsh
-```
-Launch it :
-```Bash
-$ myshortcuts
+myshortcuts() {
+    /home/`whoami`/.cargo/bin/myshortcuts
+    source /tmp/myshortcuts_command.sh
+}
 ```
 
-### Windows
-Clone the repository :
-```Powershell
-$ git clone https://github.com/LugolBis/MyShortcuts.git
-```
 > [!NOTE]
-> You can easily configure a powershell alias by yourself to ```cd``` in MyShortcuts dir and launch it with ```cargo run```.
+> If you are on Windows you can use ```WSL```.
+<br>
 
 ## Available Scheme
 **MyShortcuts** integrate predefined schemes for the databases connection. These schemes help you to adding and editing a new database connection by provide you the configuration needed by any of them.
@@ -83,15 +62,13 @@ Moreover these schemes are used to format your configuration and generate a shel
 |:-:|:-:|:-:|:-:|
 |Linux/macOS|Bash|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#Bash-)|
 |Linux/macOS|Zsh|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#zsh-)|
-|Windows|PowerShell|✅​|[Requirements](https://github.com/LugolBis/MyShortcuts/edit/main/README.md#powershell-)|
+|Windows|PowerShell|❔​​|...|
 
 ## Requirements
 ### Linux/macOS :
 #### Bash :
-- [Tmux](https://github.com/tmux/tmux)
 - Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
 #### Zsh :
-- [Tmux](https://github.com/tmux/tmux)
 - Cargo ([see Cargo.toml](https://github.com/LugolBis/MyShortcuts/blob/main/Cargo.toml))
 
 ### Windows :
