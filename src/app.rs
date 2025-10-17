@@ -61,7 +61,7 @@ impl App {
                     if !message.is_empty() {
                         return Ok(message);
                     }
-                },
+                }
                 Err(error) => {
                     return Err(error);
                 }

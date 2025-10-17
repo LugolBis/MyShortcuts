@@ -34,7 +34,7 @@ fn main() {
     }
 
     match main_app() {
-        Ok(message) => {println!("{}", message)}
-        Err(error) => println!("ERROR with the function mainApp :\n{error}"),
+     Ok(message) => print!("{}", message),
+        Err(error) => print!("ERROR with the function mainApp :\n{error}"),
     }
 }
