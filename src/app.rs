@@ -1,5 +1,4 @@
-use std::fs::OpenOptions;
-use std::io::{self, Write};
+use std::io::{self};
 
 use crate::database::{
     AVAILABLE_SHEME, CLASSIC_SHEME, CUSTOM_SHEME, Database, FILE_SCHEME, MONGODB_SCHEME,
@@ -19,7 +18,7 @@ use ratatui::{
 use tui_input::Input;
 use tui_input::backend::crossterm::EventHandler;
 
-pub fn main_app() -> io::Result<()> {
+pub fn main_app() -> io::Result<String> {
     let mut terminal = ratatui::init();
     let mut app = App::new();
     let app_result = app.run(&mut terminal);
@@ -53,13 +52,13 @@ impl App {
         }
     }
 
-    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<()> {
+    pub fn run(&mut self, terminal: &mut DefaultTerminal) -> io::Result<String> {
         while !self.exit {
             self.update_widgets_args();
             terminal.draw(|frame| self.draw(frame))?;
             self.handle_events()?;
         }
-        Ok(())
+        Ok("".to_owned())
     }
 
     fn draw(&mut self, frame: &mut Frame) {
@@ -91,7 +90,7 @@ impl App {
         }
     }
 
-    fn handle_events(&mut self) -> io::Result<()> {
+    fn handle_events(&mut self) -> io::Result<String> {
         let event = event::read()?;
         if let Event::Key(key) = event {
             match (self.shortcuts.get_state(), self.configurations.get_state()) {
@@ -119,15 +118,17 @@ impl App {
                         .set_state(State::Editing(ts1, new_input));
                 }
                 _ if key.kind == KeyEventKind::Press => {
-                    self.handle_key_event(key);
+                    if let Some(message) = self.handle_key_event(key) {
+                        return Ok(message);
+                    };
                 }
                 _ => {}
             }
         }
-        Ok(())
+        Ok("".to_owned())
     }
 
-    fn handle_key_event(&mut self, key_event: KeyEvent) {
+    fn handle_key_event(&mut self, key_event: KeyEvent) -> Option<String> {
         match (
             self.shortcuts.get_state(),
             self.configurations.get_state(),
@@ -209,9 +210,11 @@ impl App {
                 State::WasSelected(_) | State::Selected(_),
                 KeyCode::Char('o') | KeyCode::Char('O'),
             ) => {
+                self.exit();
                 if let Some(shortcut) = self.shortcuts.get_values().get(ts0.selected().unwrap_or(0))
                 {
-                    self.execute_shortcut(String::clone(shortcut.get_kind()));
+                    let message: String = self.get_shortcut(String::clone(shortcut.get_kind()));
+                    return Some(message);
                 }
             }
             (
@@ -368,6 +371,7 @@ impl App {
             ) => self.exit(),
             (_, _, _) => {}
         }
+        None
     }
 
     fn update_widgets_args(&mut self) {
@@ -502,48 +506,33 @@ impl App {
         }
     }
 
-    fn execute_shortcut(&self, kind: String) {
-        let mut path = get_folder_path().unwrap_or_default();
-        path.push("current_command.txt");
-
-        if let Ok(mut file) = OpenOptions::new()
-            .write(true)
-            .create(true)
-            .truncate(true)
-            .open(path)
-        {
-            let command: String;
-            let current_configuration = self
-                .configurations
-                .get_values()
-                .iter()
-                .map(|c| c.get_value())
-                .collect::<Vec<&String>>();
-            if kind == "Oracle" {
-                command = oracle(filter_config!(current_configuration))
-            } else if kind == "MySQL" {
-                command = mysql(filter_config!(current_configuration))
-            } else if kind == "MariaDB" {
-                command = mariadb(filter_config!(current_configuration))
-            } else if kind == "PostgreSQL" {
-                command = postgresql(filter_config!(current_configuration));
-            } else if kind == "SQLite" {
-                command = sqlite(filter_config!(current_configuration));
-            } else if kind == "Redis" {
-                command = redis(filter_config!(current_configuration));
-            } else if kind == "MongoDB" {
-                command = mongodb(filter_config!(current_configuration));
-            } else if kind == "Neo4j" {
-                command = neo4j(filter_config!(current_configuration));
-            } else if kind == "Custom" {
-                command = String::clone(self.configurations.get_values()[0].get_value());
-            } else {
-                command = String::from("echo 'Welcome on MyShortcuts !'");
-            }
-
-            if file.write_all(command.as_bytes()).is_ok() {
-                run_command();
-            }
+    fn get_shortcut(&self, kind: String) -> String {
+        let current_configuration = self
+            .configurations
+            .get_values()
+            .iter()
+            .map(|c| c.get_value())
+            .collect::<Vec<&String>>();
+        if kind == "Oracle" {
+            oracle(filter_config!(current_configuration))
+        } else if kind == "MySQL" {
+            mysql(filter_config!(current_configuration))
+        } else if kind == "MariaDB" {
+            mariadb(filter_config!(current_configuration))
+        } else if kind == "PostgreSQL" {
+            postgresql(filter_config!(current_configuration))
+        } else if kind == "SQLite" {
+            sqlite(filter_config!(current_configuration))
+        } else if kind == "Redis" {
+            redis(filter_config!(current_configuration))
+        } else if kind == "MongoDB" {
+            mongodb(filter_config!(current_configuration))
+        } else if kind == "Neo4j" {
+            neo4j(filter_config!(current_configuration))
+        } else if kind == "Custom" {
+            String::clone(self.configurations.get_values()[0].get_value())
+        } else {
+            format!("Configuration detected : {:#?}", current_configuration)
         }
     }
 

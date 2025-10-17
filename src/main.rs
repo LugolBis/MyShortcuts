@@ -1,23 +1,15 @@
 mod app;
 mod database;
 mod objects;
-mod shell_scripts;
 mod ui;
 mod utils;
 
 use app::main_app;
 use database::{DB_NAME, Database};
-use std::process::Command;
-use std::{env, fs};
+use std::fs;
 use utils::{Logs, get_folder_path};
 
-use crate::shell_scripts::TERMINAL;
-
 fn main() {
-    unsafe {
-        std::env::set_var("RUST_BACKTRACE", "1");
-    }
-
     if let Ok(mut path) = get_folder_path() {
         if !fs::exists(&path).unwrap_or(true) {
             match fs::create_dir(&path) {
@@ -40,18 +32,10 @@ fn main() {
     } else {
         println!("ERROR : Failed to get the folder path where the script is.")
     }
-
-    match (env::consts::OS, env::var("MYSHORTCUTSLAUNCH")) {
-        ("linux" | "macos", Err(_)) => {
-            let exit_status = Command::new("bash").arg("-c").arg(TERMINAL).status();
-            match exit_status {
-                Ok(_) => {}
-                Err(error) => Logs::write(format!("\n{}", error)),
-            }
-        }
-        (_, _) => match main_app() {
-            Ok(_) => {}
-            Err(error) => println!("ERROR with the function mainApp :\n{error}"),
-        },
+    Logs::write("HELLO".to_string());
+    panic!();
+    match main_app() {
+        Ok(message) => {print!("{}", message)}
+        Err(error) => println!("ERROR with the function mainApp :\n{error}"),
     }
 }

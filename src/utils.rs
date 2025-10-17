@@ -1,11 +1,7 @@
 use std::env;
 use std::fs::OpenOptions;
-use std::io::{Read, Write};
+use std::io::Write;
 use std::path::PathBuf;
-use std::process::Command;
-use std::thread;
-
-use crate::shell_scripts::{COMMAND, MAIN};
 
 pub struct Logs;
 
@@ -24,93 +20,6 @@ pub fn get_folder_path() -> Result<PathBuf, String> {
     exe_path.pop();
     exe_path.push("myshortcuts_resources");
     Ok(exe_path)
-}
-
-pub fn run_command() {
-    match env::consts::OS {
-        "linux" | "macos" => run_bash(),
-        "windows" => run_powershell(),
-        unsupported => Logs::write(format!("\nERROR : Unsupported OS '{}'", unsupported)),
-    }
-}
-
-fn run_powershell() {
-    thread::spawn(move || {
-        if format_to_powershell().is_ok() {
-            if let Ok(folder_path) = get_folder_path() {
-                let script =
-                    MAIN.replace("$MYSHORTCUTS_DIR", &format!("{}", folder_path.display()));
-
-                let exit_status = Command::new("powershell")
-                    .args(vec!["-ExecutionPolicy", "Bypass", "-File", &script])
-                    .status();
-
-                match exit_status {
-                    Ok(_) => {}
-                    Err(error) => Logs::write(format!("{}", error)),
-                }
-            } else {
-                Logs::write(String::from(
-                    "\nERROR : utils.rs - run_powershell():\nNo current_dir",
-                ))
-            }
-        }
-    });
-}
-
-fn format_to_powershell() -> Result<(), ()> {
-    let mut path = get_folder_path().unwrap_or_default();
-    path.push("current_command.txt");
-
-    match OpenOptions::new().write(true).truncate(true).open(path) {
-        Ok(mut file) => {
-            let mut content = String::new();
-            match file.read_to_string(&mut content) {
-                Ok(_) => {
-                    content = content.replace(" && ", " ; ");
-                    match file.write_all(content.as_bytes()) {
-                        Ok(_) => Ok(()),
-                        Err(error) => {
-                            Logs::write(format!(
-                                "ERROR : utils.rs - format_to_powershell - 3\n{}",
-                                error
-                            ));
-                            Err(())
-                        }
-                    }
-                }
-                Err(error) => {
-                    Logs::write(format!(
-                        "ERROR : utils.rs - format_to_powershell - 2nd\n{}",
-                        error
-                    ));
-                    Err(())
-                }
-            }
-        }
-        Err(error) => {
-            Logs::write(format!(
-                "ERROR : utils.rs - format_to_powershell - 1st\n{}",
-                error
-            ));
-            Err(())
-        }
-    }
-}
-
-fn run_bash() {
-    thread::spawn(move || match get_folder_path() {
-        Ok(folder_path) => {
-            let script = COMMAND.replace("$0", &format!("{}", folder_path.display()));
-
-            let exit_status = Command::new("bash").arg("-c").arg(script).status();
-            match exit_status {
-                Ok(_) => {}
-                Err(error) => Logs::write(format!("\n{}", error)),
-            }
-        }
-        Err(error) => Logs::write(error),
-    });
 }
 
 pub fn neo4j(vector: Vec<&String>) -> String {
@@ -155,7 +64,7 @@ pub fn mysql(vector: Vec<&String>) -> String {
         }
     }
     if let Some(value) = vector.get(3).filter(|s| !s.is_empty()) {
-        flags.push(format!("-p'{}'", value));
+        flags.push(format!("-p '{}'", value));
     }
     if let Some(value) = vector.get(5).filter(|s| !s.is_empty()) {
         flags.push(format!("--protocol=socket -S {}", value))
