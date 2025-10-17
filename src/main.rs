@@ -32,10 +32,9 @@ fn main() {
     } else {
         println!("ERROR : Failed to get the folder path where the script is.")
     }
-    Logs::write("HELLO".to_string());
-    panic!();
+
     match main_app() {
-        Ok(message) => {print!("{}", message)}
+        Ok(message) => {println!("{}", message)}
         Err(error) => println!("ERROR with the function mainApp :\n{error}"),
     }
 }

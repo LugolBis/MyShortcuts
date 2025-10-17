@@ -56,7 +56,16 @@ impl App {
         while !self.exit {
             self.update_widgets_args();
             terminal.draw(|frame| self.draw(frame))?;
-            self.handle_events()?;
+            match self.handle_events() {
+                Ok(message) => {
+                    if !message.is_empty() {
+                        return Ok(message);
+                    }
+                },
+                Err(error) => {
+                    return Err(error);
+                }
+            };
         }
         Ok("".to_owned())
     }
