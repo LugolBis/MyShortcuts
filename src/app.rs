@@ -40,7 +40,7 @@ impl App {
         App {
             shortcuts: WidgetShortcuts::from(
                 vec![],
-                State::Selected(TableState::new().with_selected(0).with_selected_column(0)),
+                State::Selected(TableState::new().with_selected(0).with_selected_column(1)),
             ),
             configurations: WidgetConfigurations::from(
                 vec![],
@@ -170,11 +170,8 @@ impl App {
             (State::Selected(ts0), State::WasSelected(ts1), KeyCode::Right) => {
                 self.switch_selected_widget(ts0, ts1, true);
             }
-            (State::Selected(mut ts0), State::WasSelected(_), KeyCode::Left) => {
-                if let Some(index) = ts0.selected_column() {
-                    ts0.select_column(Some(index.saturating_sub(1)));
-                    self.shortcuts.set_state(State::Selected(ts0));
-                }
+            (State::Selected(_), State::WasSelected(_), KeyCode::Left) => {
+                // Do nothing
             }
             (State::WasSelected(_), State::Selected(mut ts), KeyCode::Up) => {
                 let index = ts.selected().map_or(0, |i| {
@@ -204,13 +201,8 @@ impl App {
                 self.switch_selected_widget(ts0, ts1, false);
             }
             (State::WasSelected(_), State::Selected(mut ts1), KeyCode::Right) => {
-                if let Some(index) = ts1.selected_column() {
-                    if index < self.configurations.get_values().len() {
-                        ts1.select_column(Some(index.saturating_add(1)))
-                    };
-                    self.configurations.set_state(State::Selected(ts1));
-                } else {
-                    ts1.select_column(Some(0));
+                if None == ts1.selected_column() {
+                    ts1.select_column(Some(1));
                     self.configurations.set_state(State::Selected(ts1))
                 }
             }
@@ -477,38 +469,28 @@ impl App {
         if from_widget0 {
             // Widget0 -> Selected -> Key Right Pressed
             match ts0.selected_column() {
-                Some(index) => {
-                    if index == 0 {
-                        ts0.select_column(Some(index + 1));
-                        self.shortcuts.set_state(State::Selected(ts0));
-                    } else {
-                        ts0.select_column(Some(index));
-                        ts1.select_column(Some(0));
-                        self.shortcuts.set_state(State::WasSelected(ts0));
-                        self.configurations.set_state(State::Selected(ts1));
-                    }
+                Some(_) => {
+                    ts0.select_column(Some(1));
+                    ts1.select_column(Some(1));
+                    self.shortcuts.set_state(State::WasSelected(ts0));
+                    self.configurations.set_state(State::Selected(ts1));
                 }
                 None => {
-                    ts0.select_column(Some(0));
+                    ts0.select_column(Some(1));
                     self.shortcuts.set_state(State::Selected(ts0));
                 }
             }
         } else {
             // Widget1 -> Selected -> Key Left Pressed
             match ts1.selected_column() {
-                Some(index) => {
-                    if index == 0 {
-                        ts1.select_column(Some(index));
-                        ts0.select_column(Some(1));
-                        self.shortcuts.set_state(State::Selected(ts0));
-                        self.configurations.set_state(State::WasSelected(ts1));
-                    } else {
-                        ts1.select_column(Some(index - 1));
-                        self.configurations.set_state(State::Selected(ts1));
-                    }
+                Some(_) => {
+                    ts1.select_column(Some(1));
+                    ts0.select_column(Some(1));
+                    self.shortcuts.set_state(State::Selected(ts0));
+                    self.configurations.set_state(State::WasSelected(ts1));
                 }
                 None => {
-                    ts1.select_column(Some(0));
+                    ts1.select_column(Some(1));
                     self.configurations.set_state(State::Selected(ts1));
                 }
             }
