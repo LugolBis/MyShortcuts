@@ -12,15 +12,14 @@ use ratatui::{
 use unicode_width::UnicodeWidthStr;
 
 const ROW_BG: Color = Color::Black;
-const ROW_SELECTED: Color = Color::Rgb(227, 186, 143);
+const ROW_SELECTED: Color = Color::Rgb(155, 175, 223);
 const ROW_FONT: Color = Color::Rgb(227, 151, 143);
 const COLUMN_SELECTED: Color = Color::Rgb(101, 175, 223);
 const CELL_SELECTED: Color = Color::Rgb(155, 175, 223);
 const HEADER: Color = Color::Rgb(218, 93, 72);
 
-const ROW_WAS_SELECTED: Color = Color::Rgb(174, 134, 86);
-const COLUMN_WAS_SELECTED: Color = Color::Rgb(155, 175, 223);
-const CELL_WAS_SELECTED: Color = Color::Rgb(97, 122, 173);
+const ROW_WAS_SELECTED: Color = Color::Rgb(117, 146, 206);
+const COLUMN_WAS_SELECTED: Color = Color::Rgb(117, 146, 206);
 const CELL_EDITING: Color = Color::Rgb(151, 192, 80);
 
 #[derive(Debug)]
@@ -271,7 +270,7 @@ pub trait Common {
                     .add_modifier(Modifier::REVERSED)
                     .fg(ROW_WAS_SELECTED);
                 selected_col_style = Style::default().fg(COLUMN_WAS_SELECTED);
-                selected_cell_style = Style::default().fg(CELL_WAS_SELECTED);
+                selected_cell_style = Style::default();
                 rows = self.get_rows();
             }
             State::Editing(ts, input) => {
@@ -384,37 +383,37 @@ pub fn render_help(frame: &mut Frame, area: Rect) {
     let lines = vec![
         Line::from(vec![
             " Select : ".into(),
-            "<Up>".yellow(),
-            " / ".into(),
-            "<Down>".yellow(),
-            " / ".into(),
-            "<Left>".yellow(),
-            " / ".into(),
-            "<Right>".yellow(),
+            "[Up]".light_cyan(),
+            " | ".into(),
+            "[Down]".light_cyan(),
+            " | ".into(),
+            "[Left]".light_cyan(),
+            " | ".into(),
+            "[Right]".light_cyan(),
         ]),
-        Line::from(vec![" Add new shortcut : ".into(), "<a> ".yellow()]),
+        Line::from(vec![" Add new shortcut : ".into(), "[a] ".light_cyan()]),
         Line::from(vec![
-            " Remove shortcut/configuration value : ".into(),
-            "<r> ".yellow(),
+            " Remove shortcut/config : ".into(),
+            "[r] ".light_cyan(),
         ]),
         Line::from(vec![
             " Open the selected shortcut : ".into(),
-            "<o> ".yellow(),
+            "[o] ".light_cyan(),
         ]),
         Line::from(vec![
-            " Edit shortcut name/configuration value : ".into(),
-            "<e> ".yellow(),
+            " Edit shortcut/config : ".into(),
+            "[e] ".light_cyan(),
         ]),
-        Line::from(vec![" Save changes : ".into(), "<Enter> ".yellow()]),
+        Line::from(vec![" Save changes : ".into(), "[Enter] ".light_cyan()]),
         Line::from(vec![
-            " Hidde/Show congigurations : ".into(),
-            "<h> ".yellow(),
+            " Hidde/Show configs : ".into(),
+            "[h] ".light_cyan(),
         ]),
         Line::from(vec![
             " Quit : ".into(),
-            "<q>".yellow(),
-            " / ".into(),
-            "<Esc> ".yellow(),
+            "[q]".light_cyan(),
+            " | ".into(),
+            "[Esc] ".light_cyan(),
         ]),
     ];
 

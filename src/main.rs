@@ -25,7 +25,7 @@ fn main() {
                 panic!("{error}")
             } else {
                 let _init = Database::query_write("
-                    insert into shortcuts values ('c6', '127.0.0.1, userA, my_db, password', 'Neo4j');
+                    insert into shortcuts values ('c6', '127.0.0.1', 'userA', 'my_db', 'password', 'Neo4j');
                 ");
             }
         }
