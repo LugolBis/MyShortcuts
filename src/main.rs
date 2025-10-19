@@ -34,17 +34,18 @@ fn main() {
     }
 
     match main_app() {
-        Ok(command) => {
-            if !command.is_empty() {
-                match OpenOptions::new().create(true).truncate(true).write(true).open("/tmp/myshortcuts_command.sh") {
-                    Ok(mut file) => {
-                        if let Err(error) = file.write_all(command.as_bytes()) {
-                            Logs::write(format!("\n{}", error));
-                        }
+        Ok(mut command) => {
+            match OpenOptions::new().create(true).truncate(true).write(true).open("/tmp/myshortcuts_command.sh") {
+                Ok(mut file) => {
+                    if command.is_empty() {
+                        command.push_str("echo Good bye dear user !");
                     }
-                    Err(error) => {
+                    if let Err(error) = file.write_all(command.as_bytes()) {
                         Logs::write(format!("\n{}", error));
                     }
+                }
+                Err(error) => {
+                    Logs::write(format!("\n{}", error));
                 }
             }
         },
