@@ -1,6 +1,7 @@
 use sqlite::Value;
+use std::iter;
 
-use crate::utils::get_folder_path;
+use crate::utils::{generate_name, get_folder_path, Logs};
 pub const DB_NAME: &str = "my_shortcuts.db";
 
 /// Used For the following databases : Oracle, PostgreSQL, Neo4j,
@@ -111,21 +112,21 @@ fn extract_value(value: Value) -> Result<String, String> {
     }
 }
 
-#[test]
-fn test_query_read() {
-    match Database::query_read("select * from shortcuts;") {
-        Ok(res) => println!("{}", res),
-        Err(res) => println!("{}", res),
-    }
-}
-
-#[test]
-fn test_extract_value() {
-    assert_eq!(extract_value(Value::Float(55.1)), Ok(String::from("55.1")));
-    assert_eq!(extract_value(Value::Integer(55)), Ok(String::from("55")));
-    assert_eq!(
-        extract_value(Value::String(String::from("tutu"))),
-        Ok(String::from("tutu"))
+pub fn insert_default_config(current_names: Vec<String>, kind: &str, fields: usize) {
+    let new_name = generate_name(current_names);
+    let config: String = iter::repeat("Required")
+        .take(fields)
+        .collect::<Vec<_>>()
+        .join(";");
+    let query = format!(
+        "INSERT INTO shortcuts VALUES ('{}','{}','{}');",
+        new_name, config, kind
     );
-    assert_eq!(extract_value(Value::Null), Ok(String::from("null")));
+    
+    if let Err(error) = Database::query_write(&query) {
+        Logs::write(format!(
+            "\nERROR : app.rs - add_new_shortcut() :\n{}\n|-> Name generated : '{}'",
+            error, new_name
+        ));
+    }
 }

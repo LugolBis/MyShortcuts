@@ -2,7 +2,7 @@ use std::io::{self};
 
 use crate::database::{
     AVAILABLE_SHEME, CLASSIC_SHEME, CUSTOM_SHEME, Database, FILE_SCHEME, MONGODB_SCHEME,
-    REDIS_SCHEME, SOCKET_SCHEME,
+    REDIS_SCHEME, SOCKET_SCHEME, insert_default_config
 };
 use crate::objects::*;
 use crate::ui::{Common, WidgetConfigurations, WidgetShortcuts, render_help, render_pop_up};
@@ -530,57 +530,23 @@ impl App {
 
     fn add_new_shortcut(&self) {
         let kind = AVAILABLE_SHEME[self.show_pop_up.1];
-        let names = self
+        let current_names = self
             .shortcuts
             .get_values()
             .iter()
             .map(|s| String::clone(s.get_name()))
             .collect::<Vec<String>>();
-        let new_name = generate_name(names);
-        let query: String = match kind {
-            "Oracle" => format!(
-                "insert into shortcuts values ('{}','Required;Required;Required;Required','Oracle');",
-                new_name
-            ),
-            "MySQL" => format!(
-                "insert into shortcuts values ('{}','Required;Required;Required;Required','MySQL');",
-                new_name
-            ),
-            "MariaDB" => format!(
-                "insert into shortcuts values ('{}','Required;Required;Required;Required','MariaDB');",
-                new_name
-            ),
-            "PostgreSQL" => format!(
-                "insert into shortcuts values ('{}','Required;Required;Required;Required','PostgreSQL');",
-                new_name
-            ),
-            "SQLite" => format!(
-                "insert into shortcuts values ('{}','Required;','SQLite');",
-                new_name
-            ),
-            "Redis" => format!(
-                "insert into shortcuts values ('{}','Required;Required','Redis');",
-                new_name
-            ),
-            "MongoDB" => format!(
-                "insert into shortcuts values ('{}','Required;Required','MongoDB');",
-                new_name
-            ),
-            "Neo4j" => format!(
-                "insert into shortcuts values ('{}','Required;Required;Required;Required','Neo4j');",
-                new_name
-            ),
-            "Custom" => format!(
-                "insert into shortcuts values ('{}','echo Welcome on MyShortcuts','Custom');",
-                new_name
-            ),
-            _ => String::new(),
+        let fields: usize = match kind {
+            "Oracle" | "PostgreSQL" | "Neo4j" | "MySQL" | "MariaDB" => 4,
+            "Redis" | "MongoDB" => 2,
+            "SQLite" | "Custom" => 1,
+            _ => 0
         };
-        if let Err(error) = Database::query_write(&query) {
-            Logs::write(format!(
-                "\nERROR : app.rs - add_new_shortcut() :\n{}\n|-> Name generated : '{}'",
-                error, new_name
-            ));
+        if fields > 0 {
+            insert_default_config(current_names, kind, fields);
+        }
+        else {
+            Logs::write(format!("\nERROR : Invalid Sheme '{}'", kind));
         }
     }
 
@@ -600,16 +566,6 @@ impl App {
         let _ = Database::query_write(&query);
         self.save = String::new();
     }
-}
-
-fn generate_name(current_names: Vec<String>) -> String {
-    let nb_max = current_names
-        .iter()
-        .filter(|x| x.contains("Default"))
-        .map(|x| (*x).replace("Default", "").parse::<u64>().unwrap_or(0))
-        .max()
-        .unwrap_or(0);
-    format!("Default{}", nb_max + 1)
 }
 
 fn get_current_config(configurations: Vec<&str>, kind: &str) -> Vec<Configuration> {

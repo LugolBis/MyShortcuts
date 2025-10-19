@@ -22,6 +22,16 @@ pub fn get_folder_path() -> Result<PathBuf, String> {
     Ok(exe_path)
 }
 
+pub fn generate_name(current_names: Vec<String>) -> String {
+    let nb_max = current_names
+        .iter()
+        .filter(|x| x.contains("Default"))
+        .map(|x| (*x).replace("Default", "").parse::<u64>().unwrap_or(0))
+        .max()
+        .unwrap_or(0);
+    format!("Default{}", nb_max + 1)
+}
+
 pub fn neo4j(vector: Vec<&String>) -> String {
     let mut flags = Vec::new();
     if let (Some(&host), Some(&port)) = (vector.first(), vector.get(1)) {
