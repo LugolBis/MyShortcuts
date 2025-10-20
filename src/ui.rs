@@ -1,7 +1,7 @@
 use crate::database::AVAILABLE_SHEME;
 use crate::objects::*;
 use ratatui::{
-    layout::{Margin, Rect}, prelude::Constraint, style::{Color, Modifier, Style, Stylize}, symbols::border, text::{Line, Text}, widgets::{Block, Cell, HighlightSpacing, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState}, Frame
+    layout::Rect, prelude::Constraint, style::{Color, Modifier, Style, Stylize}, symbols::border, text::{Line, Text}, widgets::{Block, Cell, HighlightSpacing, Paragraph, Row, Table, TableState}, Frame
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -250,10 +250,9 @@ pub trait Common {
 
         let mut rows: Vec<ratatui::widgets::Row<'_>>;
         let len_constraints = self.constraint_len_calculator();
-        let mut scrollbar_state: Option<ScrollbarState> = None;
 
         match self.get_common_state() {
-            State::Selected(ts) => {
+            State::Selected(_) => {
                 selected_row_style = Style::default()
                     .add_modifier(Modifier::REVERSED)
                     .fg(ROW_SELECTED);
@@ -262,9 +261,6 @@ pub trait Common {
                     .add_modifier(Modifier::BOLD)
                     .fg(CELL_SELECTED);
                 rows = self.get_rows();
-
-                let local_scrollbar_state = ScrollbarState::new((rows.len() - 1) * ROW_HEIGHT as usize);
-                scrollbar_state = Some(local_scrollbar_state.position(ts.selected().unwrap_or(0)));
             }
             State::WasSelected(_) => {
                 selected_row_style = Style::default()
@@ -328,11 +324,7 @@ pub trait Common {
         .block(block);
     
         match self.get_common_state() {
-            State::Selected(mut ts) => {
-                frame.render_stateful_widget(t, area.clone(), &mut ts);
-                render_scrollbar(frame, area, scrollbar_state)
-            },
-            State::WasSelected(mut ts) | State::Editing(mut ts, _) => {
+            State::Selected(mut ts) | State::WasSelected(mut ts) | State::Editing(mut ts, _) => {
                 frame.render_stateful_widget(t, area, &mut ts)
             }
         }
@@ -349,22 +341,6 @@ fn calculate_cursor_position(
     let index = if index > 11 { 11_u16 } else { index as u16 };
     let y = area.y + 2u16 * (index + 1) + (index) + 2u16;
     (x, y)
-}
-
-fn render_scrollbar(frame: &mut Frame, area: Rect, scrollbar_state: Option<ScrollbarState>) {
-    if let Some(mut scrollbar_state) = scrollbar_state {
-        frame.render_stateful_widget(
-        Scrollbar::default()
-            .orientation(ScrollbarOrientation::VerticalRight)
-            .begin_symbol(None)
-            .end_symbol(None),
-        area.inner(Margin {
-            vertical: 1,
-            horizontal: 1,
-        }),
-            &mut scrollbar_state,
-        );
-    }
 }
 
 pub fn render_pop_up(frame: &mut Frame, index: usize, area: Rect) {
