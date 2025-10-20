@@ -1,13 +1,7 @@
 use crate::database::AVAILABLE_SHEME;
 use crate::objects::*;
 use ratatui::{
-    Frame,
-    layout::Rect,
-    prelude::Constraint,
-    style::{Color, Modifier, Style, Stylize},
-    symbols::border,
-    text::{Line, Text},
-    widgets::{Block, Cell, HighlightSpacing, Paragraph, Row, Table, TableState},
+    layout::{Margin, Rect}, prelude::Constraint, style::{Color, Modifier, Style, Stylize}, symbols::border, text::{Line, Text}, widgets::{Block, Cell, HighlightSpacing, Paragraph, Row, Scrollbar, ScrollbarOrientation, ScrollbarState, Table, TableState}, Frame
 };
 use unicode_width::UnicodeWidthStr;
 
@@ -21,6 +15,9 @@ const HEADER: Color = Color::Rgb(218, 93, 72);
 const ROW_WAS_SELECTED: Color = Color::Rgb(117, 146, 206);
 const COLUMN_WAS_SELECTED: Color = Color::Rgb(117, 146, 206);
 const CELL_EDITING: Color = Color::Rgb(151, 192, 80);
+
+const ROW_HEIGHT: u16 = 3;
+const HEADER_HEIGHT: u16 = 3;
 
 #[derive(Debug)]
 pub struct WidgetShortcuts {
@@ -142,7 +139,7 @@ impl Common for WidgetShortcuts {
                     .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                     .collect::<Row>()
                     .style(Style::new().fg(ROW_FONT).bg(ROW_BG))
-                    .height(3)
+                    .height(ROW_HEIGHT)
             })
             .collect()
     }
@@ -198,7 +195,7 @@ impl Common for WidgetConfigurations {
                         .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                         .collect::<Row>()
                         .style(Style::new().fg(ROW_FONT).bg(ROW_BG))
-                        .height(3)
+                        .height(ROW_HEIGHT)
                 })
                 .collect()
         } else {
@@ -210,7 +207,7 @@ impl Common for WidgetConfigurations {
                         .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                         .collect::<Row>()
                         .style(Style::new().fg(ROW_FONT).bg(ROW_BG))
-                        .height(3)
+                        .height(ROW_HEIGHT)
                 })
                 .collect()
         }
@@ -245,7 +242,7 @@ pub trait Common {
             .map(Cell::from)
             .collect::<Row>()
             .style(Style::default().add_modifier(Modifier::BOLD).fg(HEADER))
-            .height(2);
+            .height(HEADER_HEIGHT);
 
         let selected_row_style: Style;
         let selected_col_style: Style;
@@ -253,9 +250,10 @@ pub trait Common {
 
         let mut rows: Vec<ratatui::widgets::Row<'_>>;
         let len_constraints = self.constraint_len_calculator();
+        let mut scrollbar_state: Option<ScrollbarState> = None;
 
         match self.get_common_state() {
-            State::Selected(_) => {
+            State::Selected(ts) => {
                 selected_row_style = Style::default()
                     .add_modifier(Modifier::REVERSED)
                     .fg(ROW_SELECTED);
@@ -264,6 +262,9 @@ pub trait Common {
                     .add_modifier(Modifier::BOLD)
                     .fg(CELL_SELECTED);
                 rows = self.get_rows();
+
+                let local_scrollbar_state = ScrollbarState::new((rows.len() - 1) * ROW_HEIGHT as usize);
+                scrollbar_state = Some(local_scrollbar_state.position(ts.selected().unwrap_or(0)));
             }
             State::WasSelected(_) => {
                 selected_row_style = Style::default()
@@ -292,7 +293,7 @@ pub trait Common {
                         .map(|content| Cell::from(Text::from(format!("\n{content}\n"))))
                         .collect::<Row>()
                         .style(Style::new().bg(Color::Black))
-                        .height(3);
+                        .height(ROW_HEIGHT);
 
                     let width = area.width.max(2) - 3;
                     let scroll = input.visual_scroll(width as usize);
@@ -325,8 +326,13 @@ pub trait Common {
         .fg(ROW_FONT)
         .highlight_spacing(HighlightSpacing::Always)
         .block(block);
+    
         match self.get_common_state() {
-            State::Selected(mut ts) | State::WasSelected(mut ts) | State::Editing(mut ts, _) => {
+            State::Selected(mut ts) => {
+                frame.render_stateful_widget(t, area.clone(), &mut ts);
+                render_scrollbar(frame, area, scrollbar_state)
+            },
+            State::WasSelected(mut ts) | State::Editing(mut ts, _) => {
                 frame.render_stateful_widget(t, area, &mut ts)
             }
         }
@@ -345,6 +351,22 @@ fn calculate_cursor_position(
     (x, y)
 }
 
+fn render_scrollbar(frame: &mut Frame, area: Rect, scrollbar_state: Option<ScrollbarState>) {
+    if let Some(mut scrollbar_state) = scrollbar_state {
+        frame.render_stateful_widget(
+        Scrollbar::default()
+            .orientation(ScrollbarOrientation::VerticalRight)
+            .begin_symbol(None)
+            .end_symbol(None),
+        area.inner(Margin {
+            vertical: 1,
+            horizontal: 1,
+        }),
+            &mut scrollbar_state,
+        );
+    }
+}
+
 pub fn render_pop_up(frame: &mut Frame, index: usize, area: Rect) {
     let mut rows: Vec<Row<'_>> = AVAILABLE_SHEME
         .iter()
@@ -353,13 +375,13 @@ pub fn render_pop_up(frame: &mut Frame, index: usize, area: Rect) {
             Row::default()
                 .cells(vec![Line::from(item).centered()])
                 .style(Style::new().fg(ROW_FONT).bg(ROW_BG))
-                .height(2)
+                .height(HEADER_HEIGHT)
         })
         .collect();
 
     rows[index] = Row::clone(&rows[index])
         .style(Style::new().bg(Color::Black).fg(CELL_SELECTED))
-        .height(2);
+        .height(HEADER_HEIGHT);
 
     let block = Block::bordered()
         .border_set(border::ROUNDED)
