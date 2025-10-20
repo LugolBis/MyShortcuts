@@ -326,10 +326,9 @@ pub trait Common {
         .highlight_spacing(HighlightSpacing::Always)
         .block(block);
         match self.get_common_state() {
-            State::Selected(mut ts) | State::WasSelected(mut ts) => {
+            State::Selected(mut ts) | State::WasSelected(mut ts) | State::Editing(mut ts, _) => {
                 frame.render_stateful_widget(t, area, &mut ts)
             }
-            State::Editing(mut ts, _) => frame.render_stateful_widget(t, area, &mut ts),
         }
     }
 }
